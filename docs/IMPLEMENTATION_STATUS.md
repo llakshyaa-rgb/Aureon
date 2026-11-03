@@ -1,50 +1,49 @@
 # Implementation Status
 
-This file records what is actually present in the repository. A feature being listed in FEATURES.md does not mean it is operational.
+This status is deliberately conservative. "In progress" means useful local workflows exist; it does not mean live providers are connected.
 
-## Working local capabilities added so far
+## Six expanded capability areas in this milestone
 
-| Area | Present functionality | Not yet present |
-|---|---|---|
-| Runtime | Termux-friendly Python, SQLite, local HTTP API | Hosted production deployment |
-| Jobs | Persistent queue, idempotency keys, bounded retries, interrupted-job recovery | Background daemon/scheduler and multi-agent orchestration |
-| Intelligence | Explainable score from supplied signals | Automated live trend and competitor collection |
-| Economics | Unit-cost, fee, margin, break-even and POD/drop comparison | Verified live supplier and shipping quotes |
-| Workspace | Records for opportunities, products, designs, listings, orders, tickets, campaigns, suppliers and customers | Full domain workflows for every record type |
-| Creative | Structured original-design brief builder and rights-review flags | Connected image model, artwork generation, print-file QA and mockups |
-| Catalog | Listing title, description, tags and alt-text draft generator | Channel-specific live validation and listing sync |
-| Support | Rule-based ticket classification and safe response draft | Connected inbox, customer history and AI support agent |
-| Marketing | Channel-specific content draft generator | Social publishing, ad execution and attribution connectors |
-| Finance | Actual/estimated ledger entries and currency-separated summaries | Provider reconciliation, payouts, taxes, FX feed and cash-flow forecasting |
-| Approvals | Single-use pending/approved/rejected records | Expiry enforcement, authenticated approver identity and live action executor |
-| Command center | Local dashboard for record counts, recent work, jobs and finance | Full interactive multi-page control center |
+1. **Opportunity intelligence:** evidence URL and timestamp validation, analyst-supplied signals, weighted score and saved opportunity record.
+2. **Supplier research:** supplier profiles, timestamped manual quotes and same-currency/destination landed-cost comparisons. Quotes are unverified until independently confirmed.
+3. **Order operations:** order simulation, approval request, matching-approval check before recording supplier submission, and tracking/status updates. No supplier is contacted and no order is actually placed.
+4. **Campaign analytics:** recorded campaign observations and CTR, conversion rate, cost/order, ROAS and revenue-minus-ad-spend calculations. ROAS is not profit.
+5. **Scheduling:** persistent scheduled jobs and a manual tick that enqueues due jobs. The scheduler does not run itself in the background.
+6. **Worker integration:** mock processors for opportunity assessment and campaign calculations, alongside the previous design/listing/support/marketing/economics processors.
 
-## Mock worker job types
+## Existing local capabilities
 
-- design.brief
-- listing.draft
-- support.triage
-- marketing.draft
-- economics.calculate
-- economics.compare
+- Python/SQLite runtime, local-only dashboard and JSON API.
+- Durable queue with idempotency, bounded retries and interrupted-job recovery.
+- Unit economics and POD/dropshipping comparison.
+- Structured design briefs and listing/marketing/support drafts.
+- Workspace records, approval records and currency-separated actual/estimated ledger.
 
-The worker intentionally rejects unknown job kinds. It performs internal calculations and draft generation only. It does not contact suppliers, publish products, place orders, send customer messages, or spend money.
+## Still not implemented
+
+- Live trend/search/social scraping or APIs.
+- Live supplier catalogs, availability, verified shipping quotes or supplier ordering.
+- AI image generation, mockups or print-ready asset validation.
+- Shopify/WooCommerce/marketplace publishing or inventory sync.
+- Actual fulfillment-provider and carrier integrations.
+- Connected customer inbox or autonomous replies.
+- Social publishing, ad buying or attribution integrations.
+- Payment/payout reconciliation, taxes, FX feeds and cash-flow forecasting.
+- Multi-agent planning/delegation, secure remote/cloud worker, unattended scheduler daemon.
+- Full multi-page interactive command center and natural-language command interpreter.
 
 ## Verification
 
-Tests have been added for queue behavior, economics, workspace records, approvals, finance summaries, drafting services and worker execution. They still need to be run in the target Termux environment before calling this milestone verified.
-
-Run:
+Automated tests have been added, including tests for the expanded workflows, but this repository update has not been executed in the target Termux environment. Do not treat it as verified until this passes:
 
     python -m unittest discover -s tests -v
 
-## Next implementation targets
+## Commands
 
-1. Evidence-backed market research ingestion and opportunity workflow.
-2. Product/supplier normalized catalog and quote adapters.
-3. Real creative provider interface with asset storage and print validation.
-4. Provider sandbox integrations and draft publishing.
-5. Order lifecycle simulator, reconciliation and approval enforcement.
-6. Connected customer support and marketing analytics.
-7. Finance reconciliation and reporting.
-8. Agent orchestration, schedules, cloud workers and secure webhooks.
+    python -m aureon.cli init
+    python -m aureon.cli tick
+    python -m aureon.cli work
+    python -m aureon.cli status
+    python -m aureon.cli run
+
+The API binds to localhost. Mock mode does not make purchases, publish listings, send messages or spend money.
