@@ -52,8 +52,8 @@ This status describes code that exists locally in the repository. "In progress" 
 - Shopify/WooCommerce/marketplace publishing and inventory synchronization.
 - Actual fulfillment-provider/carrier integrations or customer shipment notifications.
 - Connected customer inbox, autonomous customer replies, social publishing or ad buying.
-- Payment/payout reconciliation, taxes, live FX, refunds or cash-flow forecasting.
-- Multi-agent delegation, remote/cloud execution, background scheduler daemon, or natural-language command center.
+- Bank/payment-provider reconciliation, taxes, live FX, actual refund execution or predictive cash-flow forecasting.
+- Dependency-aware agent orchestration, remote/cloud execution, background scheduler daemon, or unrestricted natural-language command execution.
 
 ## Verification still required
 
