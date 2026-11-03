@@ -13,6 +13,10 @@ def create_order(db_path,product_title,quantity,unit_cost,currency,supplier_id=N
     if isinstance(quantity,bool) or not isinstance(quantity,int) or quantity<1 or quantity>10000: raise ValueError("quantity must be 1..10000")
     if isinstance(unit_cost,bool) or not isinstance(unit_cost,(int,float)) or not math.isfinite(unit_cost) or unit_cost<0: raise ValueError("unit_cost must be finite and non-negative")
     if not isinstance(currency,str) or not re.fullmatch(r"[A-Za-z]{3}",currency): raise ValueError("currency must be three-letter code")
+    if supplier_id is not None:
+        from .workflows import list_records
+        if not isinstance(supplier_id,int) or isinstance(supplier_id,bool) or not any(x["id"]==supplier_id for x in list_records(db_path,"supplier",250)):
+            raise ValueError("supplier_id must reference an existing supplier")
     data={"product_title":product_title.strip(),"quantity":quantity,"unit_cost":round(float(unit_cost),2),
       "currency":currency.upper(),"supplier_id":supplier_id,"customer_reference":str(customer_reference)[:150] if customer_reference else None,
       "supplier_order_status":"not_submitted","tracking":None,"total_supplier_cost":round(quantity*unit_cost,2)}
