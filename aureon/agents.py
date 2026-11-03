@@ -22,8 +22,7 @@ def submit_plan(db_path,name,tasks,idempotency_key=None):
   for row in rows:
    if json.loads(row["data_json"]).get("idempotency_key")==key:return {"run_id":row["id"],"duplicate":True}
  ids=[]
- for task in plan["tasks"]:
-  ids.append(enqueue(db_path,task["kind"],task["payload"],key+"-"+str(task["step"]))["id"])
+ for task in plan["tasks"]:ids.append(enqueue(db_path,task["kind"],task["payload"],key+"-"+str(task["step"]))["id"])
  with connect(db_path) as conn:
   cur=conn.execute("INSERT INTO workspace_records(kind,status,title,data_json) VALUES('agent_run','queued',?,?)",(plan["name"],json_dump({**plan,"idempotency_key":key,"job_ids":ids})))
   run_id=cur.lastrowid
@@ -32,5 +31,14 @@ def submit_plan(db_path,name,tasks,idempotency_key=None):
 def runtime_status(db_path):
  with connect(db_path) as conn:
   jobs={r["status"]:r["n"] for r in conn.execute("SELECT status,COUNT(*) n FROM jobs GROUP BY status")}
-  runs=[dict(r) for r in conn.execute("SELECT id,status,title,created_at FROM workspace_records WHERE kind='agent_run' ORDER BY id DESC LIMIT 30")]
+  rows=conn.execute("SELECT id,status,title,created_at,data_json FROM workspace_records WHERE kind='agent_run' ORDER BY id DESC LIMIT 30").fetchall()
+  runs=[]
+  for row in rows:
+   data=json.loads(row["data_json"]);ids=data.get("job_ids",[])
+   states=[]
+   if ids:
+    marks=",".join("?" for _ in ids)
+    states=[r["status"] for r in conn.execute("SELECT status FROM jobs WHERE id IN ("+marks+")",ids).fetchall()]
+   status="succeeded" if states and all(x=="succeeded" for x in states) else "failed" if any(x=="failed" for x in states) else "running" if any(x=="running" for x in states) else "queued"
+   runs.append({"id":row["id"],"status":status,"title":row["title"],"created_at":row["created_at"],"job_ids":ids,"job_statuses":states})
  return {"jobs":jobs,"recent_runs":runs,"execution":"manual worker only","shell_execution":False,"external_side_effects":False}
