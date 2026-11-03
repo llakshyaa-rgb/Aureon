@@ -4,69 +4,50 @@ A local-first AI commerce operations platform for researching opportunities, cre
 
 ## Current milestone
 
-The first foundation provides a phone-friendly Python runtime, SQLite persistence, a durable job queue, a local HTTP API, provider contracts, and tests. Product discovery, artwork generation, supplier/store integrations, and real order operations are roadmap items, not features claimed to be complete.
-
-## Design principles
-
-- Local-first and cloud-ready: develop on Android/Termux; move scheduled workers to cloud later.
-- Safe by default: mock mode, no real purchases, no live order submission, localhost binding.
-- Evidence before action: preserve source links and separate facts from AI hypotheses.
-- Human approval for spending, public publishing, refunds, and supplier commitments.
-- Provider-neutral: POD, dropshipping, storefronts, trend sources, and AI models are adapters.
-- Recoverable: persistent jobs, bounded retries, event history, and idempotency keys.
-- No secrets in Git.
+The foundation includes a Termux-friendly Python runtime, SQLite persistence, a durable job queue with bounded retries and startup crash recovery, a localhost HTTP dashboard/API, provider contracts, transparent opportunity scoring, and unit economics for comparing commerce channels. External providers and live commerce actions are not implemented yet.
 
 ## Run on Termux or Linux
 
-Requires Python 3.10+. The foundation uses only the Python standard library.
+Requires Python 3.10+. No third-party Python packages are required.
 
     git clone https://github.com/llakshyaa-rgb/Aureon.git
     cd Aureon
     python -m aureon.cli init
+    python -m unittest discover -s tests -v
     python -m aureon.cli run
 
 Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C.
 
-Useful commands:
+## Intelligence tools
 
-    python -m aureon.cli status
-    python -m unittest discover -s tests -v
+The economics module calculates estimated unit costs, fees, profit, margin, and break-even advertising cost. It can compare POD and dropshipping offers in the same currency.
+
+The opportunity scorer combines normalized 0-100 signals for demand, trend, margin, competition, shipping, and evidence confidence. Higher competition scores mean lower saturation. Each weighted contribution is returned for inspection.
+
+These are decision-support calculations, not sales forecasts. Taxes, duties, returns, foreign exchange, and unknown fees must be added as explicit costs when known.
 
 ## Local API
 
 - GET /health — health and mode.
-- GET /api/overview — persisted job counts.
+- GET /api/overview — job counts.
 - GET /api/jobs — recent jobs.
 - POST /api/jobs — enqueue a job with JSON such as {"kind":"research.scan","payload":{}}.
 
-This is a local development control plane, not a production storefront or public API. Do not expose it to the internet until authentication, authorization, rate limits, CSRF protections, and deployment hardening exist.
+The server binds to localhost only. It is not a public API or production storefront.
 
-## Planned capabilities
+## Roadmap
 
-1. Global trend, niche, demand, and competitor research.
-2. Opportunity scoring with evidence, saturation, shipping, fees, production cost, and margin estimates.
-3. POD-versus-dropshipping decision engine.
-4. Original design briefs, artwork workflows, mockups, and collections.
-5. Supplier/catalog discovery and product normalization.
-6. SEO listings, pricing suggestions, and draft publishing.
-7. Order intake, supplier fulfillment, tracking, exception handling, and customer-service assistance.
-8. Marketing experiments, performance analytics, and persistent business memory.
+1. Evidence-backed trend and competitor research connectors.
+2. Normalized product and supplier catalogs with destination-specific shipping quotes.
+3. POD-versus-dropshipping recommendations using sourced quotes and economics.
+4. Original design briefs, artwork workflows, and mockups.
+5. Draft listings, SEO, and storefront adapters.
+6. Order intake, approval-gated fulfillment, tracking, customer-service assistance.
+7. Marketing experiments and performance analytics.
+8. Optional cloud workers and webhooks, with the phone as the control surface.
 
-Each integration will be implemented only after checking its API, commercial terms, regional availability, and operating costs.
+## Safety
 
-## Repository map
+Mock mode only. No live purchases, supplier orders, ad spend, refunds, or public listings. Credentials and local business data must never be committed. Respect marketplace, payment-provider, tax, identity, and age requirements.
 
-- aureon/config.py — runtime settings.
-- aureon/db.py — SQLite schema and event persistence.
-- aureon/jobs.py — durable queue and state transitions.
-- aureon/server.py — local HTTP API and status page.
-- aureon/providers/base.py — future integration contracts.
-- docs/ — architecture and safety rules.
-
-## Account and business eligibility
-
-Aureon will not bypass marketplace eligibility, identity checks, age requirements, payment-provider rules, tax obligations, or supplier terms. Use accurate account information and an eligible adult account holder wherever a platform requires one. Start with mock data and manual review before connecting real commerce accounts.
-
-## License
-
-MIT. See LICENSE.
+See docs/ARCHITECTURE.md and docs/SAFETY.md.

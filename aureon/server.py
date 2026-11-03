@@ -1,12 +1,10 @@
 """Local-only HTTP control plane."""
-
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
-
 from . import __version__
 from .db import connect, initialize
-from .jobs import enqueue, list_jobs
+from .jobs import enqueue, list_jobs, recover_interrupted
 
 PAGE = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -35,7 +33,6 @@ j.jobs.map(function(x){return '#'+x.id+' · '+x.kind+' · '+x.status;}).join('\\
 refresh();setInterval(refresh,5000);
 </script></html>""".replace("__VERSION__", __version__)
 
-
 def make_handler(db_path):
     class Handler(BaseHTTPRequestHandler):
         def _send(self, status, body, content_type="application/json"):
@@ -44,9 +41,9 @@ def make_handler(db_path):
             self.send_header("Content-Type", content_type + "; charset=utf-8")
             self.send_header("Content-Length", str(len(data)))
             self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(data)
-
         def do_GET(self):
             path = urlparse(self.path).path
             if path == "/":
@@ -56,11 +53,13 @@ def make_handler(db_path):
             if path == "/api/overview":
                 with connect(db_path) as conn:
                     rows = conn.execute("SELECT status,COUNT(*) AS n FROM jobs GROUP BY status").fetchall()
-                return self._send(200, {"jobs": {r["status"]: r["n"] for r in rows}})
+                counts = {r["status"]: r["n"] for r in rows}
+                for status in ("queued","running","succeeded","failed","needs_approval","cancelled"):
+                    counts.setdefault(status, 0)
+                return self._send(200, {"jobs": counts})
             if path == "/api/jobs":
                 return self._send(200, {"jobs": list_jobs(db_path)})
             return self._send(404, {"error": "not_found"})
-
         def do_POST(self):
             if urlparse(self.path).path != "/api/jobs":
                 return self._send(404, {"error": "not_found"})
@@ -74,19 +73,19 @@ def make_handler(db_path):
                 job = enqueue(db_path, str(body.get("kind", "")), body.get("payload", {}),
                               body.get("idempotency_key"))
                 return self._send(201, {"job": job})
-            except (ValueError, json.JSONDecodeError) as exc:
+            except (ValueError, TypeError, json.JSONDecodeError) as exc:
                 return self._send(400, {"error": str(exc)})
-
         def log_message(self, fmt, *args):
             print("[http] " + (fmt % args))
-
     return Handler
-
 
 def serve(host, port, db_path):
     if host not in {"127.0.0.1", "localhost", "::1"}:
         raise ValueError("Aureon currently binds to localhost only")
     initialize(db_path)
+    recovered = recover_interrupted(db_path)
+    if recovered["requeued"] or recovered["failed"]:
+        print("Recovered interrupted jobs:", recovered)
     server = ThreadingHTTPServer((host, port), make_handler(db_path))
     print("Aureon: http://%s:%s (mock mode; Ctrl+C to stop)" % (host, port))
     try:
