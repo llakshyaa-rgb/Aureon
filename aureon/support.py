@@ -18,7 +18,7 @@ def draft_response(db_path,ticket_id,response):
   if row is None:raise ValueError("ticket not found")
   data=json.loads(row["data_json"]);data["draft_reply"]=response.strip();data["response_status"]="draft_only"
   data.setdefault("history",[]).append({"type":"response_drafted","response":response.strip(),"sent":False})
-  conn.execute("UPDATE workspace_records SET data_json=?,status='drafted',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",(json_dump(data),ticket_id))
+  conn.execute("UPDATE workspace_records SET data_json=?,status=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",(json_dump(data),"escalated" if data.get("priority")=="urgent" else "drafted",ticket_id))
   conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",("support.response.drafted","support_ticket",str(ticket_id),"{}"))
  return {"id":ticket_id,"response":response.strip(),"sent":False,"requires_human_review":True}
 def add_internal_note(db_path,ticket_id,note,author="operator"):
