@@ -25,7 +25,7 @@ Requires Python 3.10+. No third-party Python packages are required.
     cd Aureon
     python -m aureon.cli init
     python -m unittest discover -s tests -v
-    python -m aureon.cli status\n    python -m aureon.cli workspace\n    python -m aureon.cli run
+    python -m aureon.cli status\n    python -m aureon.cli workspace\n    python -m aureon.cli work\n    python -m aureon.cli run
 
 Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C.
 
@@ -39,7 +39,7 @@ These are decision-support calculations, not sales forecasts. Taxes, duties, ret
 ## Local API
 - GET /health — health and mode.
 - GET /api/overview — job counts.
-- GET /api/jobs — recent jobs.\n- GET /api/records?kind=product — workspace records (kind optional).\n- POST /api/records — create a mock-mode workspace record.\n- PATCH /api/records/{id} — change a record status.\n- GET/POST /api/approvals — inspect or request scoped approvals.\n- POST /api/approvals/{id}/decision — decide a pending approval.\n- GET/POST /api/finance — inspect summary or add an actual/estimated ledger entry.
+- GET /api/jobs — recent jobs.\n- GET /api/records?kind=product — workspace records.\n- POST /api/records — create a mock-mode workspace record.\n- PATCH /api/records/{id} — change a record status.\n- GET/POST /api/approvals — inspect or request scoped approvals.\n- POST /api/approvals/{id}/decision — decide a pending approval.\n- GET/POST /api/finance — inspect summary or add an actual/estimated ledger entry.\n- GET /api/records?kind=product — workspace records (kind optional).\n- POST /api/records — create a mock-mode workspace record.\n- PATCH /api/records/{id} — change a record status.\n- GET/POST /api/approvals — inspect or request scoped approvals.\n- POST /api/approvals/{id}/decision — decide a pending approval.\n- GET/POST /api/finance — inspect summary or add an actual/estimated ledger entry.
 - POST /api/jobs — enqueue a job with JSON such as {"kind":"research.scan","payload":{}}.
 
 The server binds to localhost only. It is not a public API or production storefront.
