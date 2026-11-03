@@ -60,8 +60,8 @@ class ExpandedCommerceTests(unittest.TestCase):
   enqueue(self.db,"design.brief",{"niche":"space","audience":"students","product_type":"tee","style":"minimal","concept":"planets"})
   r=run_once(self.db);self.assertEqual(r["status"],"succeeded")
   self.assertEqual(r["result"]["result"]["record"]["kind"],"design")
-  result=process_job({"kind":"opportunity.assess","payload":{"title":"Desk mat","evidence":self.evidence(),"signals":self.signals()}})
-  self.assertEqual(result["result"]["assessment"]["score"],74.25)
+  result=process_job({"kind":"opportunity.assess","payload":{"title":"Desk mat","evidence":self.evidence(),"signals":self.signals()}},self.db)
+  self.assertEqual(result["result"]["result"]["assessment"]["score"],74.25)
  def test_campaign_metric_validation_and_state_transition(self):
   with self.assertRaises(ValueError):campaign_metrics({"impressions":2,"clicks":3,"orders":0,"spend":0,"revenue":0})
   c=create_record(self.db,"campaign","Campaign",{},"draft")
