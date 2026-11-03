@@ -4,40 +4,38 @@ from .commerce import build_design_brief,generate_listing_draft,draft_marketing_
 from .intelligence.economics import Offer,calculate_unit_economics,compare_channels
 from .research import save_opportunity
 from .analytics import campaign_metrics,record_campaign_metrics
-from .workflows import create_record
-
+from .workflows import create_record,initialize_workspace
 def process_job(job,db_path=None):
  payload=job["payload"];kind=job["kind"]
  if kind=="design.brief":
   result=build_design_brief(**payload)
-  if db_path is not None: result={"draft":result,"record":create_record(db_path,"design",payload.get("concept","Design brief"),result,"brief")}
+  if db_path is not None:result={"draft":result,"record":create_record(db_path,"design",payload.get("concept","Design brief"),result,"brief")}
  elif kind=="listing.draft":
   result=generate_listing_draft(**payload)
-  if db_path is not None: result={"draft":result,"record":create_record(db_path,"listing",payload.get("product_title","Listing draft"),result,"draft")}
+  if db_path is not None:result={"draft":result,"record":create_record(db_path,"listing",payload.get("product",{}).get("title","Listing draft"),result,"draft")}
  elif kind=="support.triage":
   result=triage_support_ticket(**payload)
-  if db_path is not None: result={"triage":result,"record":create_record(db_path,"support_ticket",payload.get("subject","Support ticket"),result,"drafted")}
+  if db_path is not None:result={"triage":result,"record":create_record(db_path,"support_ticket",payload.get("subject","Support ticket"),result,"escalated" if result["priority"]=="urgent" else "drafted")}
  elif kind=="marketing.draft":
   result=draft_marketing_content(**payload)
-  if db_path is not None: result={"draft":result,"record":create_record(db_path,"campaign",payload.get("campaign_name","Marketing draft"),{"draft":result},"draft")}
- elif kind=="economics.calculate": result=calculate_unit_economics(Offer(**payload))
- elif kind=="economics.compare": result=compare_channels(Offer(**payload["pod"]),Offer(**payload["dropshipping"]))
+  if db_path is not None:result={"draft":result,"record":create_record(db_path,"campaign",payload.get("campaign_name",payload.get("product_title","Marketing draft")),{"draft":result},"draft")}
+ elif kind=="economics.calculate":result=calculate_unit_economics(Offer(**payload))
+ elif kind=="economics.compare":result=compare_channels(Offer(**payload["pod"]),Offer(**payload["dropshipping"]))
  elif kind=="opportunity.assess":
-  if db_path is None: raise ValueError("database path required for saved opportunity assessment")
+  if db_path is None:raise ValueError("database path required")
   result=save_opportunity(db_path,**payload)
  elif kind=="campaign.metrics":
-  if db_path is not None and "campaign_id" in payload:
-   result=record_campaign_metrics(db_path,payload["campaign_id"],payload["metrics"])
-  else: result=campaign_metrics(payload.get("metrics",payload))
+  if db_path is not None and "campaign_id" in payload:result=record_campaign_metrics(db_path,payload["campaign_id"],payload["metrics"])
+  else:result=campaign_metrics(payload.get("metrics",payload))
  elif kind=="product.create":
-  if db_path is None: raise ValueError("database path required")
+  if db_path is None:raise ValueError("database path required")
   result=create_record(db_path,"product",payload["title"],payload.get("data",{}),"draft")
- else: raise ValueError("No safe processor registered for job kind: "+kind)
+ else:raise ValueError("No safe processor registered for job kind: "+kind)
  return {"mode":"mock","kind":kind,"result":result}
-
 def run_once(db_path):
+ initialize_workspace(db_path)
  job=claim_next(db_path)
- if job is None: return None
+ if job is None:return None
  try:
   result=process_job(job,db_path);finish(db_path,job["id"],result)
   return {"id":job["id"],"status":"succeeded","result":result}
@@ -48,6 +46,6 @@ def run_until_empty(db_path,max_jobs=100):
  outcomes=[]
  for _ in range(max(1,min(int(max_jobs),1000))):
   outcome=run_once(db_path)
-  if outcome is None: break
+  if outcome is None:break
   outcomes.append(outcome)
  return outcomes
