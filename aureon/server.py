@@ -25,13 +25,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#bcd0ee}</style>
 <header><div><h1>Aureon</h1><span class="muted">Commerce operations · local control plane</span></div><small>v__VERSION__ · MOCK MODE</small></header>
 <section class="panel"><h2>Workspace overview</h2><div class="grid" id="stats">Loading…</div></section>
 <section class="panel"><h2>Finance snapshot</h2><pre id="finance">Loading…</pre></section>
-<section class="panel"><h2>Recent work</h2><pre id="records">Loading…</pre></section><section class="panel"><h2>Job queue</h2><pre id="jobs">Loading…</pre></section>
+<section class="panel"><h2>Recent work</h2><pre id="records">Loading…</pre></section><section class="panel"><h2>Job queue</h2><pre id="jobs">Loading…</pre></section><section class="panel"><h2>Support queue</h2><pre id="support">Loading…</pre></section><section class="panel"><h2>Campaigns</h2><pre id="campaigns">Loading…</pre></section><section class="panel"><h2>Approvals</h2><pre id="approvals">Loading…</pre></section><section class="panel"><h2>Agent runtime</h2><pre id="agents">Loading…</pre></section>
 <script>async function get(p){const r=await fetch(p);if(!r.ok)throw Error(r.status);return r.json()}
-async function refresh(){try{const [o,f,r,j]=await Promise.all([get('/api/overview'),get('/api/finance'),get('/api/records'),get('/api/jobs')]);
+async function refresh(){try{const [o,f,r,j,s,m,a,g]=await Promise.all([get('/api/overview'),get('/api/finance'),get('/api/records'),get('/api/jobs'),get('/api/support'),get('/api/marketing/campaigns'),get('/api/approvals'),get('/api/agents')]);
 document.getElementById('stats').innerHTML=Object.entries(o.records).map(([k,v])=>'<div class="stat"><b>'+v+'</b><small>'+k.replaceAll('_',' ')+'</small></div>').join('');
 document.getElementById('finance').textContent=JSON.stringify(f.summary,null,2);
 document.getElementById('records').textContent=r.records.slice(0,15).map(x=>'#'+x.id+' · '+x.kind+' · '+x.status+' · '+x.title).join('\\n')||'No records yet.';
-document.getElementById('jobs').textContent=j.jobs.slice(0,10).map(x=>'#'+x.id+' · '+x.kind+' · '+x.status).join('\\n')||'No jobs yet.';
+document.getElementById('jobs').textContent=j.jobs.slice(0,10).map(x=>'#'+x.id+' · '+x.kind+' · '+x.status).join('\\n')||'No jobs yet.';\ndocument.getElementById('support').textContent=s.tickets.slice(0,12).map(x=>'#'+x.id+' · '+x.status+' · '+x.data.priority+' · '+x.title).join('\\n')||'No open tickets.';\ndocument.getElementById('campaigns').textContent=m.campaigns.slice(0,12).map(x=>'#'+x.id+' · '+x.status+' · '+x.channel+' · '+x.name).join('\\n')||'No campaigns.';\ndocument.getElementById('approvals').textContent=a.approvals.filter(x=>x.status==='pending').map(x=>'#'+x.id+' · '+x.action+' · '+x.target_type+' '+x.target_id).join('\\n')||'No pending approvals.';\ndocument.getElementById('agents').textContent=JSON.stringify(g,null,2);
 }catch(e){document.getElementById('records').textContent='API unavailable: '+e}}refresh();setInterval(refresh,5000);</script></html>""".replace("__VERSION__",__version__)
 def make_handler(db_path):
  class Handler(BaseHTTPRequestHandler):
