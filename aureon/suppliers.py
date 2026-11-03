@@ -1,55 +1,69 @@
-"""Normalized supplier quote records and transparent quote comparisons."""
-from datetime import datetime, timezone
-from .workflows import create_record, list_records
-from .intelligence.economics import Offer, calculate_unit_economics
+"""Supplier profiles and safe, comparable manual quote records."""
+import math,re
+from datetime import datetime
+from urllib.parse import urlparse
+from .workflows import create_record,list_records
+from .db import connect,json_dump
 
 def add_supplier(db_path,name,provider,product_type,website=None,notes=""):
-    if website:
-        from urllib.parse import urlparse
+    for label,value,limit in (("name",name,200),("provider",provider,80),("product_type",product_type,100)):
+        if not isinstance(value,str) or not value.strip() or len(value)>limit: raise ValueError(label+" is required and must be <= "+str(limit)+" characters")
+    if website is not None:
+        if not isinstance(website,str): raise ValueError("website must be a URL")
         u=urlparse(website)
-        if u.scheme not in {"http","https"} or not u.netloc: raise ValueError("website must be an http(s) URL")
-    data={"provider":str(provider)[:80],"product_type":str(product_type)[:100],
-          "website":website,"notes":str(notes)[:500],"quotes":[],"verification":"unverified"}
-    return create_record(db_path,"supplier",name,data,"research")
+        if u.scheme not in {"http","https"} or not u.netloc or u.username or u.password: raise ValueError("website must be a public http(s) URL")
+    if not isinstance(notes,str): raise ValueError("notes must be text")
+    data={"provider":provider.strip(),"product_type":product_type.strip(),"website":website,
+          "notes":notes[:500],"quotes":[],"verification":"unverified"}
+    return create_record(db_path,"supplier",name.strip(),data,"research")
 
 def add_quote(db_path,supplier_id,quote):
     if not isinstance(quote,dict): raise ValueError("quote must be an object")
-    suppliers=[r for r in list_records(db_path,"supplier",250) if r["id"]==supplier_id]
-    if not suppliers: raise ValueError("supplier not found")
     required=("product_cost","shipping_cost","currency","destination","quoted_at")
     if any(k not in quote for k in required): raise ValueError("quote missing required fields")
+    costs={}
     for key in ("product_cost","shipping_cost"):
-        if not isinstance(quote[key],(int,float)) or quote[key]<0: raise ValueError(key+" must be non-negative")
-    if len(quote["currency"])!=3: raise ValueError("currency must be a three-letter code")
+        value=quote[key]
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or value<0:
+            raise ValueError(key+" must be a finite non-negative number")
+        costs[key]=round(float(value),2)
+    currency=quote["currency"]
+    if not isinstance(currency,str) or not re.fullmatch(r"[A-Za-z]{3}",currency): raise ValueError("currency must be a three-letter code")
+    destination=quote["destination"]
+    if not isinstance(destination,str) or not destination.strip() or len(destination)>100: raise ValueError("destination is required")
+    stamp=quote["quoted_at"]
+    if not isinstance(stamp,str): raise ValueError("quoted_at must be timezone-aware ISO-8601")
     try:
-        dt=datetime.fromisoformat(quote["quoted_at"].replace("Z","+00:00"))
-        if dt.tzinfo is None: raise ValueError()
+        parsed=datetime.fromisoformat(stamp.replace("Z","+00:00"))
+        if parsed.tzinfo is None: raise ValueError()
     except Exception as exc: raise ValueError("quoted_at must be timezone-aware ISO-8601") from exc
-    record=suppliers[0]; data=record["data"]
-    item={**quote,"currency":quote["currency"].upper(),"product_cost":round(float(quote["product_cost"]),2),
-          "shipping_cost":round(float(quote["shipping_cost"]),2),"status":"unverified"}
-    data["quotes"].append(item)
-    from .workflows import transition_record
-    # Update record payload through a safe dedicated helper, retaining status.
-    from .db import connect, json_dump
     with connect(db_path) as conn:
-        conn.execute("UPDATE workspace_records SET data_json=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
-                     (json_dump(data),supplier_id))
+        conn.execute("BEGIN IMMEDIATE")
+        row=conn.execute("SELECT * FROM workspace_records WHERE id=? AND kind='supplier'",(supplier_id,)).fetchone()
+        if row is None: raise ValueError("supplier not found")
+        import json
+        data=json.loads(row["data_json"])
+        item={"product_cost":costs["product_cost"],"shipping_cost":costs["shipping_cost"],
+          "currency":currency.upper(),"destination":destination.strip(),"quoted_at":stamp,
+          "status":"unverified","reference":str(quote.get("reference",""))[:150],
+          "notes":str(quote.get("notes",""))[:500]}
+        data.setdefault("quotes",[]).append(item)
+        conn.execute("UPDATE workspace_records SET data_json=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",(json_dump(data),supplier_id))
         conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
-                     ("supplier.quote.added","supplier",str(supplier_id),json_dump({"destination":item["destination"],"currency":item["currency"]})))
-    return item
+          ("supplier.quote.added","supplier",str(supplier_id),json_dump({"destination":item["destination"],"currency":item["currency"],"quote_index":len(data["quotes"])-1})))
+        return item
 
 def compare_supplier_quotes(db_path,product_type,destination,currency):
+    if not all(isinstance(x,str) and x.strip() for x in (product_type,destination,currency)): raise ValueError("product_type, destination and currency are required")
+    if not re.fullmatch(r"[A-Za-z]{3}",currency): raise ValueError("currency must be a three-letter code")
     candidates=[]
     for supplier in list_records(db_path,"supplier",250):
-        if supplier["data"].get("product_type","").lower()!=product_type.lower(): continue
+        if supplier["data"].get("product_type","").casefold()!=product_type.strip().casefold(): continue
         for quote in supplier["data"].get("quotes",[]):
-            if quote["destination"].lower()==destination.lower() and quote["currency"]==currency.upper():
-                total=round(quote["product_cost"]+quote["shipping_cost"],2)
+            if quote["destination"].casefold()==destination.strip().casefold() and quote["currency"]==currency.upper():
                 candidates.append({"supplier_id":supplier["id"],"supplier":supplier["title"],
-                  "provider":supplier["data"].get("provider"),"landed_cost":total,"currency":currency.upper(),
-                  "quoted_at":quote["quoted_at"],"status":quote.get("status","unverified"),
-                  "quote":quote})
-    candidates.sort(key=lambda x:x["landed_cost"])
+                  "provider":supplier["data"].get("provider"),"landed_cost":round(quote["product_cost"]+quote["shipping_cost"],2),
+                  "currency":currency.upper(),"quoted_at":quote["quoted_at"],"status":quote.get("status","unverified"),"quote":quote})
+    candidates.sort(key=lambda x:(x["landed_cost"],x["quoted_at"]))
     return {"quotes":candidates,"best_quote":candidates[0] if candidates else None,
-      "warning":"Quotes are user-supplied and unverified. Confirm stock, quality, shipping, taxes and current price with the supplier."}
+      "warning":"Quotes are user-supplied and unverified. Confirm stock, quality, shipping, duties, taxes and current price with the supplier."}
