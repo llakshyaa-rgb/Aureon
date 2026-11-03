@@ -12,6 +12,11 @@ from .suppliers import add_supplier,add_quote,compare_supplier_quotes
 from .operations import create_order,request_supplier_order_approval,record_supplier_submission,update_tracking
 from .analytics import record_campaign_metrics,summarize_campaigns
 from .scheduler import initialize_scheduler,schedule_job,enqueue_due,list_scheduled
+from .support import open_ticket,draft_response,add_internal_note,support_queue
+from .marketing import create_campaign,request_campaign_approval,campaign_overview
+from .finance import record_transaction,reconcile,cashflow_projection,financial_dashboard
+from .agents import submit_plan,runtime_status
+from .command_center import dashboard_snapshot,interpret_command
 PAGE="""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aureon</title>
 <style>:root{color-scheme:dark;font-family:system-ui;background:#0b1020;color:#e8edf7}body{max-width:1000px;margin:28px auto;padding:0 16px}
 header,.grid{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}h1{letter-spacing:-1px}.muted,small{color:#9aa8bd}
@@ -57,6 +62,11 @@ def make_handler(db_path):
     q=parse_qs(urlparse(self.path).query);return self._send(200,compare_supplier_quotes(db_path,q.get("product_type",[""])[0],q.get("destination",[""])[0],q.get("currency",["USD"])[0]))
    if path=="/api/campaigns/metrics": return self._send(200,{"campaigns":summarize_campaigns(db_path)})
    if path=="/api/schedules": return self._send(200,{"schedules":list_scheduled(db_path)})
+   if path=="/api/support": return self._send(200,support_queue(db_path))
+   if path=="/api/marketing/campaigns": return self._send(200,{"campaigns":campaign_overview(db_path)})
+   if path=="/api/finance/dashboard": return self._send(200,financial_dashboard(db_path))
+   if path=="/api/agents": return self._send(200,runtime_status(db_path))
+   if path=="/api/command-center": return self._send(200,dashboard_snapshot(db_path))
    return self._send(404,{"error":"not_found"})
   def do_POST(self):
    path=urlparse(self.path).path
@@ -82,7 +92,19 @@ def make_handler(db_path):
     if path=="/api/approvals": return self._send(201,{"approval":request_approval(db_path,b.get("action",""),b.get("target_type",""),b.get("target_id",""),b.get("reason",""),b.get("amount"),b.get("currency"))})
     if path.startswith("/api/approvals/") and path.endswith("/decision"):
      aid=int(path.split("/")[3]);return self._send(200,{"approval":decide_approval(db_path,aid,b.get("decision",""))})
-    if path=="/api/finance": return self._send(201,{"entry":add_finance_entry(db_path,b.get("entry_type",""),b.get("amount"),b.get("currency",""),b.get("description",""),b.get("reference"),b.get("actual",False))})
+    if path=="/api/finance": return self._send(201,{"entry":record_transaction(db_path,b.get("entry_type",""),b.get("amount"),b.get("currency",""),b.get("description",""),b.get("reference"),b.get("actual",True))})
+    if path=="/api/finance/reconcile": return self._send(200,reconcile(db_path,b.get("currency",""),b.get("opening_balance"),b.get("closing_balance")))
+    if path=="/api/finance/forecast": return self._send(200,cashflow_projection(db_path,b.get("opening_cash"),b.get("forecast_days",30),b.get("expected_revenue",0),b.get("expected_costs",0),b.get("currency","USD")))
+    if path=="/api/support": return self._send(201,{"ticket":open_ticket(db_path,b.get("subject",""),b.get("message",""),b.get("order_reference"),b.get("customer_reference"),b.get("channel","manual"))})
+    if path.startswith("/api/support/") and path.endswith("/response"):
+     tid=int(path.split("/")[3]);return self._send(200,draft_response(db_path,tid,b.get("response","")))
+    if path.startswith("/api/support/") and path.endswith("/notes"):
+     tid=int(path.split("/")[3]);return self._send(200,add_internal_note(db_path,tid,b.get("note",""),b.get("author","operator")))
+    if path=="/api/marketing/campaigns": return self._send(201,{"campaign":create_campaign(db_path,b.get("name",""),b.get("product_title",""),b.get("audience",""),b.get("channel",""),b.get("benefit",""),b.get("call_to_action",""),b.get("budget"),b.get("currency","USD"))})
+    if path.startswith("/api/marketing/campaigns/") and path.endswith("/approval"):
+     cid=int(path.split("/")[4]);return self._send(201,{"approval":request_campaign_approval(db_path,cid,b.get("action",""),b.get("amount"),b.get("reason","Human review required"))})
+    if path=="/api/agents/plans": return self._send(201,submit_plan(db_path,b.get("name",""),b.get("tasks"),b.get("idempotency_key")))
+    if path=="/api/commands/interpret": return self._send(200,interpret_command(b.get("command","")))
     return self._send(404,{"error":"not_found"})
    except (ValueError,TypeError,KeyError,json.JSONDecodeError) as exc: return self._send(400,{"error":str(exc)})
   def do_PATCH(self):
