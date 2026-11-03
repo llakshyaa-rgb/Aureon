@@ -5,7 +5,7 @@ from .config import Settings
 from .db import connect, initialize
 from .server import serve
 from .features import all_features
-from .workflows import initialize_workspace, list_records, finance_summary, list_approvals
+from .workflows import initialize_workspace, list_records, finance_summary, list_approvals\nfrom .worker import run_until_empty
 
 def main():
     parser=argparse.ArgumentParser(prog="aureon")
@@ -14,7 +14,7 @@ def main():
     sub.add_parser("run",help="start the local dashboard and API")
     sub.add_parser("status",help="show local runtime status")
     sub.add_parser("features",help="list product scope and implementation status")
-    sub.add_parser("workspace",help="show local commerce workspace records")
+    sub.add_parser("workspace",help="show local commerce workspace records")\n    worker=sub.add_parser("work",help="process queued mock-mode jobs")\n    worker.add_argument("--max-jobs",type=int,default=100)
     args=parser.parse_args()
     if args.command=="features":
         print("Aureon %s — product scope"%__version__)
@@ -37,7 +37,7 @@ def main():
         print("Workspace records:",len(list_records(settings.db_path)))
         print("Pending approvals:",sum(1 for a in list_approvals(settings.db_path) if a["status"]=="pending"))
         print("Finance:",finance_summary(settings.db_path))
-    elif args.command=="workspace":
+    elif args.command=="work":\n        initialize(settings.db_path); initialize_workspace(settings.db_path)\n        outcomes=run_until_empty(settings.db_path,args.max_jobs)\n        print("Processed",len(outcomes),"jobs")\n        for item in outcomes: print(item)\n    elif args.command=="workspace":
         initialize(settings.db_path); initialize_workspace(settings.db_path)
         for r in list_records(settings.db_path): print("#%s %s [%s] %s"%(r["id"],r["kind"],r["status"],r["title"]))
 
