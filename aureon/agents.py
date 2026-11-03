@@ -12,8 +12,8 @@ def plan_run(name,tasks):
   missing=ALLOWED[t["kind"]]-set(t["payload"])
   if missing:raise ValueError("task "+str(i)+" missing "+", ".join(sorted(missing)))
   deps=t.get("depends_on",[])
-  if not isinstance(deps,list) or any(not isinstance(x,int) or isinstance(x,bool) or x<0 or x>=i for x in deps):raise ValueError("dependencies must reference earlier tasks")
-  clean.append({"step":i,"kind":t["kind"],"payload":t["payload"],"depends_on":deps})
+  if not isinstance(deps,list) or deps:raise ValueError("dependency-gated plans are not enabled yet; submit independent tasks")
+  clean.append({"step":i,"kind":t["kind"],"payload":t["payload"],"depends_on":[]})
  return {"name":name.strip(),"tasks":clean,"mode":"supervised_mock","requires_operator_review":True}
 def submit_plan(db_path,name,tasks,idempotency_key=None):
  plan=plan_run(name,tasks);key=idempotency_key or "plan-"+uuid.uuid4().hex
