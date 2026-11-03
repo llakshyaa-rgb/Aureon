@@ -8,6 +8,7 @@ from aureon.marketing import create_campaign,request_campaign_approval,campaign_
 from aureon.agents import plan_run,submit_plan,runtime_status
 from aureon.command_center import dashboard_snapshot,interpret_command
 from aureon.jobs import list_jobs
+from aureon.operations import create_order,request_supplier_order_approval,record_supplier_submission,request_refund_review
 class LastSixTests(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.db=Path(self.tmp.name)/"a.sqlite3";initialize(self.db);initialize_workspace(self.db)
@@ -35,6 +36,14 @@ class LastSixTests(unittest.TestCase):
   self.assertEqual(first["run_id"],second["run_id"]);self.assertTrue(second["duplicate"])
   self.assertEqual(len(list_jobs(self.db)),1)
   with self.assertRaises(ValueError):plan_run("Bad",[{"kind":"shell.exec","payload":{}}])
+ def test_order_refund_is_only_a_review_approval(self):
+  order=create_order(self.db,"Notebook",1,12,"USD")
+  _,approval=request_supplier_order_approval(self.db,order["id"])
+  decide_approval(self.db,approval["id"],"approved")
+  record_supplier_submission(self.db,order["id"],approval["id"],"SIM-PO-1")
+  refund=request_refund_review(self.db,order["id"],5,"Customer complaint")
+  self.assertEqual(refund["action"],"issue_refund");self.assertEqual(refund["status"],"pending")
+  with self.assertRaises(ValueError):request_refund_review(self.db,order["id"],20,"Too much")
  def test_command_center_is_read_only_and_safe(self):
   snap=dashboard_snapshot(self.db);self.assertEqual(snap["mode"],"mock")
   self.assertFalse(snap["safety"]["publishing_enabled"])
