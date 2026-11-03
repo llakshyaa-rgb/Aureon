@@ -76,3 +76,15 @@ def update_tracking(db_path,order_id,tracking_code,fulfillment_status):
         conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
           ("order.fulfillment_updated","order",str(order_id),json_dump({"status":fulfillment_status})))
         return _get_order(conn,order_id)
+
+def request_refund_review(db_path,order_id,amount,reason):
+    if isinstance(amount,bool) or not isinstance(amount,(int,float)) or not math.isfinite(amount) or amount<=0:
+        raise ValueError("refund amount must be positive and finite")
+    if not isinstance(reason,str) or not reason.strip(): raise ValueError("refund reason is required")
+    with connect(db_path) as conn:
+        order=_get_order(conn,order_id)
+        if order["status"] not in {"approved","fulfilled"}: raise ValueError("only submitted orders can be reviewed for refund")
+        if amount>order["data"]["total_supplier_cost"]: raise ValueError("refund exceeds recorded supplier cost")
+        cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason) VALUES(?,?,?,?,?,?)",
+          ("issue_refund","order",str(order_id),round(float(amount),2),order["data"]["currency"],reason.strip()[:1000]))
+        return dict(conn.execute("SELECT * FROM approvals WHERE id=?",(cur.lastrowid,)).fetchone())
