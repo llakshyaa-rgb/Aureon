@@ -72,3 +72,21 @@ Do not treat the milestone as verified until the full suite passes.
     python -m aureon.cli run
 
 The server binds to localhost. Mock mode does not make purchases, publish listings, send messages or spend money.
+
+
+## Last six local workflow domains
+
+These six domains now have local/mock service modules and HTTP API surfaces. The status `local_mock_complete` means the local workflow is implemented; it does not mean live commerce integrations or production readiness.
+
+- **Order and fulfillment:** simulated orders, amount/currency-bound approvals, one-time submission records, tracking transitions and refund-review approvals. No supplier is contacted and no refund is issued.
+- **Customer support:** persistent ticket intake, urgency classification, internal notes, response drafts and queue summaries. Responses are never sent automatically; inbox imports are not connected.
+- **Marketing:** channel-specific campaign drafts, budget estimates and explicit publication/ad-spend approval requests. No campaign is published and no ad account is charged.
+- **Finance:** actual/estimated currency-separated ledger, manual reconciliation and scenario cash-flow projections. No bank, payout, tax or FX provider is connected.
+- **Agent runtime:** allowlisted task plans enqueue durable jobs with idempotency; runtime exposes queue and run status. Workers are manually invoked; plans are supervised and cannot execute shell commands or arbitrary code. Dependency references are validated but dependency gating is not yet enforced by the worker.
+- **Command center:** localhost dashboard panels, read-only consolidated snapshot, API routes and a narrow command interpreter. It does not autonomously execute commands.
+
+New API surfaces include /api/support, /api/marketing/campaigns, /api/finance/dashboard, /api/finance/reconcile, /api/finance/forecast, /api/agents, /api/agents/plans, /api/command-center and /api/commands/interpret. Order refund review is available at /api/orders/{id}/refund-review.
+
+## Last-six verification
+
+`tests/test_last_six.py` covers the new services. The full suite, HTTP smoke tests and target-device Termux run still need to be executed before these can be marked verified. A committed test is not proof that it passes.
