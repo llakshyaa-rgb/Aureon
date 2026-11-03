@@ -50,7 +50,7 @@ The server binds to localhost only. It is not a public API or production storefr
 - Architecture: docs/ARCHITECTURE.md
 - Integration strategy: docs/INTEGRATIONS.md
 - Autonomy, approvals and recovery: docs/AUTONOMY.md
-- Safety rules: docs/SAFETY.md
+- Safety rules: docs/SAFETY.md\n- What is implemented today: docs/IMPLEMENTATION_STATUS.md
 
 ## Safety
 Mock mode only. No live purchases, supplier orders, ad spend, refunds or public listings. Credentials and local business data must never be committed. Respect marketplace, payment-provider, tax, identity and age requirements.
