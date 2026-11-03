@@ -31,7 +31,11 @@ async function refresh(){try{const [o,f,r,j,s,m,a,g]=await Promise.all([get('/ap
 document.getElementById('stats').innerHTML=Object.entries(o.records).map(([k,v])=>'<div class="stat"><b>'+v+'</b><small>'+k.replaceAll('_',' ')+'</small></div>').join('');
 document.getElementById('finance').textContent=JSON.stringify(f.summary,null,2);
 document.getElementById('records').textContent=r.records.slice(0,15).map(x=>'#'+x.id+' · '+x.kind+' · '+x.status+' · '+x.title).join('\\n')||'No records yet.';
-document.getElementById('jobs').textContent=j.jobs.slice(0,10).map(x=>'#'+x.id+' · '+x.kind+' · '+x.status).join('\\n')||'No jobs yet.';\ndocument.getElementById('support').textContent=s.tickets.slice(0,12).map(x=>'#'+x.id+' · '+x.status+' · '+x.data.priority+' · '+x.title).join('\\n')||'No open tickets.';\ndocument.getElementById('campaigns').textContent=m.campaigns.slice(0,12).map(x=>'#'+x.id+' · '+x.status+' · '+x.channel+' · '+x.name).join('\\n')||'No campaigns.';\ndocument.getElementById('approvals').textContent=a.approvals.filter(x=>x.status==='pending').map(x=>'#'+x.id+' · '+x.action+' · '+x.target_type+' '+x.target_id).join('\\n')||'No pending approvals.';\ndocument.getElementById('agents').textContent=JSON.stringify(g,null,2);
+document.getElementById('jobs').textContent=j.jobs.slice(0,10).map(x=>'#'+x.id+' · '+x.kind+' · '+x.status).join('\\n')||'No jobs yet.';
+document.getElementById('support').textContent=s.tickets.slice(0,12).map(x=>'#'+x.id+' · '+x.status+' · '+x.data.priority+' · '+x.title).join('\\n')||'No open tickets.';
+document.getElementById('campaigns').textContent=m.campaigns.slice(0,12).map(x=>'#'+x.id+' · '+x.status+' · '+x.channel+' · '+x.name).join('\\n')||'No campaigns.';
+document.getElementById('approvals').textContent=a.approvals.filter(x=>x.status==='pending').map(x=>'#'+x.id+' · '+x.action+' · '+x.target_type+' '+x.target_id).join('\\n')||'No pending approvals.';
+document.getElementById('agents').textContent=JSON.stringify(g,null,2);
 }catch(e){document.getElementById('records').textContent='API unavailable: '+e}}refresh();setInterval(refresh,5000);</script></html>""".replace("__VERSION__",__version__)
 def make_handler(db_path):
  class Handler(BaseHTTPRequestHandler):
