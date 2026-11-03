@@ -12,7 +12,7 @@ def create_campaign(db_path,name,product_title,audience,channel,benefit,call_to_
  "publication_status":"draft_only","spend_status":"not_authorized","metric_observations":[]}
  return create_record(db_path,"campaign",name,data,"draft")
 def request_campaign_approval(db_path,campaign_id,action,amount=None,reason="Human review required"):
- if action not in {"publish_listing","spend_on_ads"}:raise ValueError("unsupported campaign action")
+ if action not in {"publish_campaign","spend_on_ads"}:raise ValueError("unsupported campaign action")
  with connect(db_path) as conn:
   row=conn.execute("SELECT * FROM workspace_records WHERE id=? AND kind='campaign'",(campaign_id,)).fetchone()
  if row is None:raise ValueError("campaign not found")
