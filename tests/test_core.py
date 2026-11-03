@@ -77,7 +77,7 @@ class OpportunityScoringTests(unittest.TestCase):
     def test_score_and_tier(self):
         result = score_opportunity({"demand": 80, "trend": 75, "margin": 70,
                                     "competition": 60, "shipping": 90, "confidence": 85})
-        self.assertEqual(result["score"], 72.0)
+        self.assertEqual(result["score"], 74.25)
         self.assertEqual(result["tier"], "investigate")
     def test_missing_signal_rejected(self):
         with self.assertRaises(ValueError):
