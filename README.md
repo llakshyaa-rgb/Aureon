@@ -19,7 +19,7 @@ A local-first commerce operations workspace for product research, POD/dropshippi
 - Allowlisted supervised agent task plans, persistent runtime visibility and a unified local command-center dashboard.
 
 ## Important boundaries
-This is a local mock-mode workspace, not a live dropshipping/POD business operator yet. No live trend APIs, supplier catalogs, image-generation service, marketplace/store publishing, supplier ordering, carrier integrations, customer inbox, social/ad publishing, payments, tax or FX provider is connected. Quotes and research are operator-supplied. ROAS is not profit. Nothing buys, publishes, messages customers or spends money automatically.
+This is a local mock-mode workspace, not a live dropshipping/POD business operator yet. No live trend APIs, supplier catalogs, image-generation service, marketplace/store publishing, supplier ordering, carrier integrations, customer inbox, social/ad publishing, payments, bank reconciliation, tax or FX provider is connected. Refund review creates an approval only; it never issues money. Agent plans enqueue allowlisted independent tasks; dependency-aware execution is not enabled. Quotes and research are operator-supplied. ROAS is not profit. Nothing buys, publishes, messages customers or spends money automatically.
 
 See docs/FEATURES.md and docs/ROADMAP.md for the target product scope, and docs/IMPLEMENTATION_STATUS.md for implementation boundaries and verification status.
 
