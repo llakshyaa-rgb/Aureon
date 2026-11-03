@@ -9,7 +9,7 @@ from .workflows import (initialize_workspace,create_record,list_records,transiti
  request_approval,decide_approval,list_approvals,add_finance_entry,finance_summary)
 from .research import save_opportunity
 from .suppliers import add_supplier,add_quote,compare_supplier_quotes
-from .operations import create_order,request_supplier_order_approval,record_supplier_submission,update_tracking
+from .operations import create_order,request_supplier_order_approval,record_supplier_submission,update_tracking,request_refund_review
 from .analytics import record_campaign_metrics,summarize_campaigns
 from .scheduler import initialize_scheduler,schedule_job,enqueue_due,list_scheduled
 from .support import open_ticket,draft_response,add_internal_note,support_queue
