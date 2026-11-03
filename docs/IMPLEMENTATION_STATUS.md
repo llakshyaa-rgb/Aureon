@@ -82,7 +82,7 @@ These six domains now have local/mock service modules and HTTP API surfaces. The
 - **Customer support:** persistent ticket intake, urgency classification, internal notes, response drafts and queue summaries. Responses are never sent automatically; inbox imports are not connected.
 - **Marketing:** channel-specific campaign drafts, budget estimates and explicit publication/ad-spend approval requests. No campaign is published and no ad account is charged.
 - **Finance:** actual/estimated currency-separated ledger, manual reconciliation and scenario cash-flow projections. No bank, payout, tax or FX provider is connected.
-- **Agent runtime:** allowlisted task plans enqueue durable jobs with idempotency; runtime exposes queue and run status. Workers are manually invoked; plans are supervised and cannot execute shell commands or arbitrary code. Dependency references are validated but dependency gating is not yet enforced by the worker.
+- **Agent runtime:** allowlisted task plans enqueue durable jobs with idempotency; runtime exposes queue and run status. Workers are manually invoked; plans are supervised and cannot execute shell commands or arbitrary code. Dependency-gated plans are explicitly rejected; only independent task batches are accepted.
 - **Command center:** localhost dashboard panels, read-only consolidated snapshot, API routes and a narrow command interpreter. It does not autonomously execute commands.
 
 New API surfaces include /api/support, /api/marketing/campaigns, /api/finance/dashboard, /api/finance/reconcile, /api/finance/forecast, /api/agents, /api/agents/plans, /api/command-center and /api/commands/interpret. Order refund review is available at /api/orders/{id}/refund-review.
