@@ -12,7 +12,11 @@ A local-first commerce operations workspace for product research, POD/dropshippi
 - Simulated orders with amount/currency-bound one-time approval and fulfillment-state tracking.
 - Timestamped campaign observations and CTR, conversion, CPA and ROAS calculations.
 - Persistent scheduled jobs with idempotent atomic enqueue via manual tick.
-- Currency-separated actual/estimated finance ledger and approval records.
+- Currency-separated actual/estimated finance ledger, manual reconciliation and scenario cash-flow projections.
+- Persistent customer-support tickets, urgency triage, internal notes and human-reviewed response drafts.
+- Campaign planning, channel-specific copy drafts, publication/ad-spend approval requests and campaign metrics.
+- Simulated order lifecycle, tracking and explicit refund-review approvals.
+- Allowlisted supervised agent task plans, persistent runtime visibility and a unified local command-center dashboard.
 
 ## Important boundaries
 This is a local mock-mode workspace, not a live dropshipping/POD business operator yet. No live trend APIs, supplier catalogs, image-generation service, marketplace/store publishing, supplier ordering, carrier integrations, customer inbox, social/ad publishing, payments, tax or FX provider is connected. Quotes and research are operator-supplied. ROAS is not profit. Nothing buys, publishes, messages customers or spends money automatically.
@@ -42,7 +46,12 @@ Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C.
 - GET /api/campaigns/metrics, POST /api/campaigns/{id}/metrics
 - GET/POST /api/schedules, POST /api/schedules/run-due
 - GET/POST /api/approvals, POST /api/approvals/{id}/decision
-- GET/POST /api/finance, POST /api/jobs
+- GET/POST /api/finance, GET /api/finance/dashboard, POST /api/finance/reconcile, POST /api/finance/forecast
+- GET/POST /api/support, POST /api/support/{id}/response, POST /api/support/{id}/notes
+- GET/POST /api/marketing/campaigns, POST /api/marketing/campaigns/{id}/approval
+- POST /api/orders/{id}/refund-review
+- GET /api/agents, POST /api/agents/plans, GET /api/command-center, POST /api/commands/interpret
+- POST /api/jobs
 
 The server binds to localhost only; it is not a public API or production storefront.
 
