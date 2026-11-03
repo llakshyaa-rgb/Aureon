@@ -85,6 +85,7 @@ def request_refund_review(db_path,order_id,amount,reason):
         order=_get_order(conn,order_id)
         if order["status"] not in {"approved","fulfilled"}: raise ValueError("only submitted orders can be reviewed for refund")
         if amount>order["data"]["total_supplier_cost"]: raise ValueError("refund exceeds recorded supplier cost")
+        if conn.execute("SELECT 1 FROM approvals WHERE action=? AND target_type=? AND target_id=? AND status=?",( "issue_refund","order",str(order_id),"pending")).fetchone(): raise ValueError("a refund review is already pending for this order")
         cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason) VALUES(?,?,?,?,?,?)",
           ("issue_refund","order",str(order_id),round(float(amount),2),order["data"]["currency"],reason.strip()[:1000]))
         return dict(conn.execute("SELECT * FROM approvals WHERE id=?",(cur.lastrowid,)).fetchone())
