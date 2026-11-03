@@ -16,7 +16,9 @@ def plan_run(name,tasks):
   clean.append({"step":i,"kind":t["kind"],"payload":t["payload"],"depends_on":[]})
  return {"name":name.strip(),"tasks":clean,"mode":"supervised_mock","requires_operator_review":True}
 def submit_plan(db_path,name,tasks,idempotency_key=None):
- plan=plan_run(name,tasks);key=idempotency_key or "plan-"+uuid.uuid4().hex
+ plan=plan_run(name,tasks)
+ if idempotency_key is not None and (not isinstance(idempotency_key,str) or not idempotency_key.strip() or len(idempotency_key)>180):raise ValueError("idempotency_key must be 1-180 characters")
+ key=idempotency_key or "plan-"+uuid.uuid4().hex
  with connect(db_path) as conn:
   rows=conn.execute("SELECT id,data_json FROM workspace_records WHERE kind='agent_run'").fetchall()
   for row in rows:
