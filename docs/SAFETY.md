@@ -1,28 +1,28 @@
-# Safety rules
+# Safety Rules
 
-Aureon may eventually interact with money, marketplaces, suppliers, and customers. These rules are architectural requirements.
+Aureon may eventually interact with money, marketplaces, suppliers and customers. These are architectural requirements.
 
 ## Defaults
-
 - New installations start in mock mode.
-- No live supplier orders, ad spend, refunds, or public listing publication in the foundation milestone.
-- Bind the local server to loopback. Do not expose it through a tunnel or router port-forward.
-- Live mode requires explicit configuration and separate testing.
+- Research connectors are read-only by default.
+- Listings are drafts by default.
+- No live supplier orders, ad spend, refunds, subscriptions or public publishing without explicit authorization.
+- Bind the local server to loopback; do not expose it through a tunnel or router port-forward.
+- A roadmap entry does not enable a live integration.
 
 ## Approval gates
+Require human approval before paying a supplier, placing a fulfillment order, spending on ads or subscriptions, publishing a listing, issuing refunds or compensation, changing payout/tax/identity/bank details, or sending customer messages that make financial or legal commitments.
 
-Require a human approval record before paying a supplier, placing a fulfillment order, spending on ads or subscriptions, publishing a listing, issuing refunds or compensation, changing payout/tax/identity/bank details, or sending customer messages that make financial or legal commitments.
+Approvals must be scoped to one action, target, account and amount; expire; be single-use; and be auditable. A changed amount or destination requires new approval.
 
-Approvals should be scoped to one action, include a maximum amount where relevant, expire, and be auditable.
+## Credentials and personal data
+Never commit API keys, access tokens, cookies, OAuth refresh tokens, bank information or customer personal data. Keep environment files, local databases, credential files, logs and exports out of Git. Use narrow API scopes and never print secrets in logs or health endpoints.
 
-## Credentials
+## Evidence and creative rights
+Preserve source URL, collection time, region and extraction method for market claims. Mark AI-generated demand, pricing, competitor and margin statements as hypotheses until verified. Check trademarks, copyright, platform policies, product restrictions and supplier terms before publishing. Do not copy competitors' artwork or misrepresent products.
 
-Never commit API keys, access tokens, cookies, OAuth refresh tokens, bank information, or customer personal data. Keep environment files, local databases, credential files, logs, and exports out of Git. Use narrow API scopes and never print secrets in logs or health endpoints.
+## Financial accuracy
+Never represent estimated margins as guaranteed profit. Distinguish gross revenue, gross profit, contribution profit and net profit. Account for supplier cash-flow timing and payout delays.
 
-## Evidence
-
-Preserve source URL, collection time, region, and extraction method for market claims. Mark AI-generated demand, pricing, competitor, and margin statements as hypotheses until verified. Check trademarks, copyright, platform policies, product restrictions, and supplier terms before publishing. Never represent estimated margins as guaranteed profit.
-
-## Eligibility
-
-Respect each marketplace, payment provider, and jurisdiction's eligibility, identity verification, tax, and age requirements. Never falsify identity or route payouts through an account without the account holder's informed authorization.
+## Eligibility and customer safety
+Respect marketplace, payment-provider, jurisdiction, identity, tax and age requirements. Never falsify identity or route payouts through an account without informed authorization. Escalate safety issues, legal threats, chargebacks and uncertain refund disputes. Do not make unverified delivery promises or financial/legal commitments.
