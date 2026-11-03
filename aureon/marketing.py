@@ -2,10 +2,10 @@
 from .commerce import draft_marketing_content
 from .workflows import create_record,list_records,request_approval
 from .db import connect
-import json
+import json,math
 def create_campaign(db_path,name,product_title,audience,channel,benefit,call_to_action,budget=None,currency="USD"):
  draft=draft_marketing_content(product_title,audience,channel,benefit,call_to_action)
- if budget is not None and (isinstance(budget,bool) or not isinstance(budget,(int,float)) or budget<0):raise ValueError("budget must be non-negative")
+ if budget is not None and (isinstance(budget,bool) or not isinstance(budget,(int,float)) or not math.isfinite(budget) or budget<0):raise ValueError("budget must be non-negative")
  if not isinstance(currency,str) or len(currency)!=3 or not currency.isalpha():raise ValueError("currency must be three letters")
  data={"product_title":product_title,"audience":audience,"channel":draft["channel"],"draft":draft,
  "budget_estimate":round(float(budget),2) if budget is not None else None,"currency":currency.upper(),
