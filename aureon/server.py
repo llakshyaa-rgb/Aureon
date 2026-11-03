@@ -85,6 +85,8 @@ def make_handler(db_path):
      oid=int(path.split("/")[3]);return self._send(200,{"order":record_supplier_submission(db_path,oid,b.get("approval_id"),b.get("supplier_order_reference"))})
     if path.startswith("/api/orders/") and path.endswith("/tracking"):
      oid=int(path.split("/")[3]);return self._send(200,{"order":update_tracking(db_path,oid,b.get("tracking_code"),b.get("fulfillment_status"))})
+    if path.startswith("/api/orders/") and path.endswith("/refund-review"):
+     oid=int(path.split("/")[3]);return self._send(201,{"approval":request_refund_review(db_path,oid,b.get("amount"),b.get("reason","Refund review"))})
     if path.startswith("/api/campaigns/") and path.endswith("/metrics"):
      cid=int(path.split("/")[3]);return self._send(201,{"metrics":record_campaign_metrics(db_path,cid,b.get("metrics",{}))})
     if path=="/api/schedules": return self._send(201,{"schedule":schedule_job(db_path,b.get("kind"),b.get("payload",{}),b.get("run_at",""),b.get("idempotency_key",""))})
