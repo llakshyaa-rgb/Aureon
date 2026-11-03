@@ -1,42 +1,67 @@
 # Implementation Status
 
-This status is deliberately conservative. "In progress" means useful local workflows exist; it does not mean live providers are connected.
+This status describes code that exists locally in the repository. "In progress" means useful local workflows exist; it does not mean live providers are connected. Automated tests are committed but have not yet been run in the target Termux environment.
 
-## Six expanded capability areas in this milestone
+## Six expanded capability areas
 
-1. **Opportunity intelligence:** evidence URL and timestamp validation, analyst-supplied signals, weighted score and saved opportunity record.
-2. **Supplier research:** supplier profiles, timestamped manual quotes and same-currency/destination landed-cost comparisons. Quotes are unverified until independently confirmed.
-3. **Order operations:** order simulation, approval request, matching-approval check before recording supplier submission, and tracking/status updates. No supplier is contacted and no order is actually placed.
-4. **Campaign analytics:** recorded campaign observations and CTR, conversion rate, cost/order, ROAS and revenue-minus-ad-spend calculations. ROAS is not profit.
-5. **Scheduling:** persistent scheduled jobs and a manual tick that enqueues due jobs. The scheduler does not run itself in the background.
-6. **Worker integration:** mock processors for opportunity assessment and campaign calculations, alongside the previous design/listing/support/marketing/economics processors.
+1. **Opportunity intelligence**
+   - Evidence URLs must be public HTTP(S) links with timezone-aware collection timestamps; duplicate URLs are collapsed.
+   - Demand, trend, margin, competition, shipping and confidence inputs are range-checked and scored with visible weights.
+   - Saves evidence, normalized inputs, score, region and business-model hint in the workspace.
+   - Signals are entered by the operator; no live trend feed is connected.
 
-## Existing local capabilities
+2. **Supplier research**
+   - Supplier profiles and manually entered quotes with timestamp, destination, currency, costs and notes.
+   - Comparisons only include matching product type, destination and currency; results include landed cost and quote-age freshness labels.
+   - Quotes remain explicitly unverified; no supplier website is scraped and no stock or shipping promise is inferred.
 
-- Python/SQLite runtime, local-only dashboard and JSON API.
-- Durable queue with idempotency, bounded retries and interrupted-job recovery.
+3. **Order operations**
+   - Creates local simulated orders with optional validated supplier references.
+   - Approval is tied to the exact order, amount and currency; a pending approval cannot be duplicated.
+   - Submission record consumes the one-time approval, preventing replay; fulfillment updates follow an explicit status path.
+   - This records a simulated submission reference only. It does not contact or place an order with a supplier.
+
+4. **Campaign analytics**
+   - Stores timestamped campaign observations in one currency per campaign.
+   - Validates count relationships and computes CTR, conversion rate, cost per order, ROAS and revenue minus ad spend.
+   - ROAS and revenue-minus-ad-spend are not profit; other costs remain outside this campaign metric calculation.
+
+5. **Scheduling**
+   - Stores timezone-aware scheduled jobs with payload and idempotency key.
+   - Conflicting reuse of an idempotency key is rejected; due-job enqueue and schedule-state update are atomic.
+   - Run `python -m aureon.cli tick` to enqueue due jobs, then `python -m aureon.cli work` to process them. No background daemon is installed.
+
+6. **Worker integration**
+   - Mock processors cover design briefs, listing drafts, support triage, marketing drafts, economics, opportunity assessment, campaign metrics and product records.
+   - Draft-producing jobs persist workspace records; errors are recorded as failed jobs.
+   - No external side effects are enabled.
+
+## Shared local foundation
+
+- Python/SQLite persistence, event history, durable queue, idempotency, bounded retries and interrupted-job recovery.
+- Localhost-only dashboard and JSON API for records, jobs, approvals, finance, suppliers, orders, campaign observations and schedules.
 - Unit economics and POD/dropshipping comparison.
-- Structured design briefs and listing/marketing/support drafts.
-- Workspace records, approval records and currency-separated actual/estimated ledger.
+- Actual-versus-estimated finance ledger, kept separate by currency.
+- Explicit record state transitions and input validation.
 
-## Still not implemented
+## Not implemented / not claimed complete
 
-- Live trend/search/social scraping or APIs.
-- Live supplier catalogs, availability, verified shipping quotes or supplier ordering.
-- AI image generation, mockups or print-ready asset validation.
-- Shopify/WooCommerce/marketplace publishing or inventory sync.
-- Actual fulfillment-provider and carrier integrations.
-- Connected customer inbox or autonomous replies.
-- Social publishing, ad buying or attribution integrations.
-- Payment/payout reconciliation, taxes, FX feeds and cash-flow forecasting.
-- Multi-agent planning/delegation, secure remote/cloud worker, unattended scheduler daemon.
-- Full multi-page interactive command center and natural-language command interpreter.
+- Live search/social trend collection, automated market-size research or competitor scraping.
+- Supplier catalogs, verified quotes, inventory checks, supplier communication or real order submission.
+- AI image generation, mockups, asset management or print-ready QA.
+- Shopify/WooCommerce/marketplace publishing and inventory synchronization.
+- Actual fulfillment-provider/carrier integrations or customer shipment notifications.
+- Connected customer inbox, autonomous customer replies, social publishing or ad buying.
+- Payment/payout reconciliation, taxes, live FX, refunds or cash-flow forecasting.
+- Multi-agent delegation, remote/cloud execution, background scheduler daemon, or natural-language command center.
 
-## Verification
+## Verification still required
 
-Automated tests have been added, including tests for the expanded workflows, but this repository update has not been executed in the target Termux environment. Do not treat it as verified until this passes:
+The repository now contains unit tests for core queue/economics/scoring, workspace/approvals/finance, worker processing and the expanded workflows. They have **not** been executed here: the execution environment could not reach GitHub to clone the repository. Run the following in Termux after pulling the commits:
 
     python -m unittest discover -s tests -v
+
+Do not treat the milestone as verified until the full suite passes.
 
 ## Commands
 
@@ -46,4 +71,4 @@ Automated tests have been added, including tests for the expanded workflows, but
     python -m aureon.cli status
     python -m aureon.cli run
 
-The API binds to localhost. Mock mode does not make purchases, publish listings, send messages or spend money.
+The server binds to localhost. Mock mode does not make purchases, publish listings, send messages or spend money.
