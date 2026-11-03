@@ -28,6 +28,7 @@ class LastSixTests(unittest.TestCase):
   self.assertEqual(c["data"]["publication_status"],"draft_only")
   a=request_campaign_approval(self.db,c["id"],"spend_on_ads")
   self.assertEqual(a["status"],"pending");self.assertEqual(campaign_overview(self.db)[0]["spend_status"],"not_authorized")
+  with self.assertRaises(ValueError):create_campaign(self.db,"Bad","Desk Mat","Students","instagram","Benefit","CTA",float("inf"))
  def test_agent_plan_is_allowlisted_and_idempotent(self):
   tasks=[{"kind":"support.triage","payload":{"subject":"Shipping","message":"Where is my order?"}}]
   self.assertEqual(len(plan_run("Support",tasks)["tasks"]),1)
@@ -36,6 +37,8 @@ class LastSixTests(unittest.TestCase):
   self.assertEqual(first["run_id"],second["run_id"]);self.assertTrue(second["duplicate"])
   self.assertEqual(len(list_jobs(self.db)),1)
   with self.assertRaises(ValueError):plan_run("Bad",[{"kind":"shell.exec","payload":{}}])
+  with self.assertRaises(ValueError):plan_run("Dependent",[{"kind":"support.triage","payload":{"subject":"A","message":"B"}},{"kind":"support.triage","payload":{"subject":"C","message":"D"},"depends_on":[0]}])
+  with self.assertRaises(ValueError):submit_plan(self.db,"Bad",tasks,"x"*181)
  def test_order_refund_is_only_a_review_approval(self):
   order=create_order(self.db,"Notebook",1,12,"USD")
   _,approval=request_supplier_order_approval(self.db,order["id"])
@@ -44,6 +47,7 @@ class LastSixTests(unittest.TestCase):
   refund=request_refund_review(self.db,order["id"],5,"Customer complaint")
   self.assertEqual(refund["action"],"issue_refund");self.assertEqual(refund["status"],"pending")
   with self.assertRaises(ValueError):request_refund_review(self.db,order["id"],20,"Too much")
+  with self.assertRaises(ValueError):request_refund_review(self.db,order["id"],2,"Duplicate pending")
  def test_command_center_is_read_only_and_safe(self):
   snap=dashboard_snapshot(self.db);self.assertEqual(snap["mode"],"mock")
   self.assertFalse(snap["safety"]["publishing_enabled"])
