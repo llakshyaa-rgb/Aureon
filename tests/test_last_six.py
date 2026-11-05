@@ -38,7 +38,9 @@ class LastSixTests(unittest.TestCase):
   self.assertEqual(first["run_id"],second["run_id"]);self.assertTrue(second["duplicate"])
   self.assertEqual(len(list_jobs(self.db)),1)
   with self.assertRaises(ValueError):plan_run("Bad",[{"kind":"shell.exec","payload":{}}])
-  with self.assertRaises(ValueError):plan_run("Dependent",[{"kind":"support.triage","payload":{"subject":"A","message":"B"}},{"kind":"support.triage","payload":{"subject":"C","message":"D"},"depends_on":[0]}])
+  dependent=plan_run("Dependent",[{"kind":"support.triage","payload":{"subject":"A","message":"B"}},{"kind":"support.triage","payload":{"subject":"C","message":"D"},"depends_on":[0]}])
+  self.assertEqual(dependent["tasks"][1]["depends_on"],[0])
+  with self.assertRaises(ValueError):plan_run("Forward",[{"kind":"support.triage","payload":{"subject":"A","message":"B"},"depends_on":[1]}])
   with self.assertRaises(ValueError):submit_plan(self.db,"Bad",tasks,"x"*181)
  def test_order_refund_is_only_a_review_approval(self):
   order=create_order(self.db,"Notebook",1,12,"USD")
