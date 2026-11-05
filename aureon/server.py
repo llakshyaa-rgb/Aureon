@@ -28,6 +28,7 @@ from .intelligence.economics import Offer
 from .intelligence.scenarios import pricing_scenarios,break_even_orders
 from .intelligence.product_research import analyze_competition
 from .finance_reports import profit_and_loss
+from .intelligence.evaluation import evaluate_product_opportunity
 from .experiments import create_experiment,record_variant_observation,compare_experiment
 
 def _shopify_draft_payload(body):
@@ -225,6 +226,8 @@ def make_handler(db_path):
      return self._send(201,{"record":record,"artwork":artwork})
     if path=="/api/research/competitors":
      return self._send(200,analyze_competition(b.get("observations")))
+    if path=="/api/opportunities/evaluate":
+     return self._send(201,evaluate_product_opportunity(db_path,b.get("title"),b.get("evidence"),b.get("signals"),b.get("observations"),b.get("offer"),b.get("region","global"),b.get("business_model","undecided")))
     if path=="/api/economics/scenarios":
      offer=Offer(**b.get("offer",{}))
      return self._send(200,pricing_scenarios(offer,b.get("prices"),b.get("target_margin",0.25)))
