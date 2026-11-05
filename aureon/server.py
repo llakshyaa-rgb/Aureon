@@ -15,7 +15,7 @@ from .suppliers import add_supplier,add_quote,compare_supplier_quotes,prepare_or
 from .operations import create_order,request_supplier_order_approval,record_supplier_submission,update_tracking,request_refund_review
 from .analytics import record_campaign_metrics,summarize_campaigns
 from .scheduler import initialize_scheduler,schedule_job,enqueue_due,list_scheduled
-from .support import open_ticket,draft_response,add_internal_note,support_queue
+from .support import open_ticket,draft_response,draft_contextual_response,add_internal_note,support_queue
 from .marketing import create_campaign,request_campaign_approval,campaign_overview
 from .finance import record_transaction,reconcile,cashflow_projection,financial_dashboard
 from .agents import submit_plan,runtime_status
@@ -256,6 +256,8 @@ def make_handler(db_path):
     if path=="/api/finance/reconcile": return self._send(200,reconcile(db_path,b.get("currency",""),b.get("opening_balance"),b.get("closing_balance")))
     if path=="/api/finance/forecast": return self._send(200,cashflow_projection(db_path,b.get("opening_cash"),b.get("forecast_days",30),b.get("expected_revenue",0),b.get("expected_costs",0),b.get("currency","USD")))
     if path=="/api/support": return self._send(201,{"ticket":open_ticket(db_path,b.get("subject",""),b.get("message",""),b.get("order_reference"),b.get("customer_reference"),b.get("channel","manual"))})
+    if path.startswith("/api/support/") and path.endswith("/contextual-response"):
+     tid=int(path.split("/")[3]);return self._send(200,draft_contextual_response(db_path,tid))
     if path.startswith("/api/support/") and path.endswith("/response"):
      tid=int(path.split("/")[3]);return self._send(200,draft_response(db_path,tid,b.get("response","")))
     if path.startswith("/api/support/") and path.endswith("/notes"):
