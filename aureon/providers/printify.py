@@ -68,3 +68,12 @@ def variants(blueprint_id, provider_id, include_out_of_stock=False):
     data = request("/catalog/blueprints/" + str(int(blueprint_id)) +
                    "/print_providers/" + str(int(provider_id)) + "/variants.json" + suffix)
     return data if isinstance(data, list) else []
+
+
+def shipping(blueprint_id, provider_id):
+    if isinstance(blueprint_id, bool) or not str(blueprint_id).isdigit():
+        raise ValueError("blueprint_id must be numeric")
+    if isinstance(provider_id, bool) or not str(provider_id).isdigit():
+        raise ValueError("provider_id must be numeric")
+    path = "/catalog/blueprints/" + str(int(blueprint_id)) + "/print_providers/" + str(int(provider_id)) + "/shipping.json"
+    return request(path.replace("/catalog/", "/catalog/"))
