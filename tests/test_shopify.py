@@ -54,7 +54,7 @@ class ShopifyProviderTests(unittest.TestCase):
 
     def test_draft_creation_rejects_empty_title(self):
         with self.assertRaises(ValueError):
-            shopify.create_draft_product(" ")
+            shopify.create_draft_product(" ", 1)
 
     def test_shop_domain_is_validated(self):
         with patch.dict(os.environ, {
