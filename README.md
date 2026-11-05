@@ -48,7 +48,8 @@ A provider token being present only means credentials are configured. Use the da
 - GET /api/shopify/connection, GET /api/shopify/products, POST /api/shopify/drafts/approval, POST /api/shopify/drafts
 - GET /api/printify/shops, GET /api/printify/blueprints
 - GET /api/printify/blueprints/{id}/providers
-- GET /api/printify/blueprints/{id}/providers/{provider_id}/variants and /shipping\n- POST /api/printify/uploads, POST /api/printify/products/approval, POST /api/printify/products
+- GET /api/printify/blueprints/{id}/providers/{provider_id}/variants and /shipping
+- POST /api/printify/uploads, POST /api/printify/products/approval, POST /api/printify/products
 - GET /api/overview, GET /api/jobs, GET/POST /api/records, PATCH /api/records/{id}
 - POST /api/opportunities/assess
 - GET/POST /api/suppliers, POST /api/suppliers/{id}/quotes, GET /api/suppliers/compare
