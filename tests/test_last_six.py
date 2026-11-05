@@ -58,6 +58,14 @@ class LastSixTests(unittest.TestCase):
   update_tracking(self.db,order["id"],"TRACK-1","delivered")
   with self.assertRaises(ValueError):
    update_tracking(self.db,order["id"],"TRACK-1","in_production")
+ def test_cancelled_submitted_order_can_enter_refund_review(self):
+  order=create_order(self.db,"Mug",1,10,"USD")
+  _,approval=request_supplier_order_approval(self.db,order["id"])
+  decide_approval(self.db,approval["id"],"approved")
+  record_supplier_submission(self.db,order["id"],approval["id"],"SIM-PO-4")
+  update_tracking(self.db,order["id"],None,"cancelled")
+  refund=request_refund_review(self.db,order["id"],5,"Order cancelled after submission")
+  self.assertEqual(refund["status"],"pending")
  def test_refund_amount_must_round_to_positive_cent(self):
   order=create_order(self.db,"Mug",1,10,"USD")
   _,approval=request_supplier_order_approval(self.db,order["id"])
