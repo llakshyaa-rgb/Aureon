@@ -159,6 +159,7 @@ def make_handler(db_path):
    if path=="/api/records": return self._send(200,{"records":list_records(db_path,parse_qs(urlparse(self.path).query).get("kind",[None])[0])})
    if path=="/api/approvals": return self._send(200,{"approvals":list_approvals(db_path)})
    if path=="/api/finance": return self._send(200,{"summary":finance_summary(db_path)})
+   if path=="/api/suppliers": return self._send(200,{"suppliers":list_records(db_path,"supplier",250)})
    if path=="/api/suppliers/compare":
     q=parse_qs(urlparse(self.path).query);return self._send(200,compare_supplier_quotes(db_path,q.get("product_type",[""])[0],q.get("destination",[""])[0],q.get("currency",["USD"])[0]))
    if path.startswith("/api/suppliers/") and path.endswith("/scorecard"):
