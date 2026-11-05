@@ -24,7 +24,7 @@ Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C. The dashboard s
 - Manual supplier quote capture and destination/currency-matched landed-cost comparison.
 - Editable SVG creative studio with five visual styles, five palettes, saved assets, multi-style collections and basic print-size/safe-area checks.
 - Persistent A/B marketing experiments with per-variant metrics and descriptive comparison.
-- Competitor observation analysis, pricing sensitivity and break-even scenarios with explicit assumptions.
+- Competitor observation analysis, integrated opportunity scoring from source evidence, competitor observations and unit economics, pricing sensitivity and break-even scenarios.
 - Period-filtered P&L reports, Google Trends rank history and order-aware support response drafts.
 - Quote-based simulated purchase-order preparation with itemized supplier and shipping costs.
 - Simulated order lifecycle with exact amount/currency approval checks. No supplier order is actually placed.
@@ -54,8 +54,8 @@ A provider token being present only means credentials are configured. Use the da
 - GET /api/printify/blueprints/{id}/providers
 - GET /api/printify/blueprints/{id}/providers/{provider_id}/variants and /shipping
 - POST /api/printify/uploads, POST /api/printify/products/approval, POST /api/printify/products
-- POST /api/creative/generate, GET /api/creative/assets, POST /api/creative/mockup
-- POST /api/research/competitors, POST /api/economics/scenarios, POST /api/economics/break-even
+- POST /api/creative/generate, POST /api/creative/collections, GET /api/creative/assets, POST /api/creative/mockup
+- POST /api/research/competitors, POST /api/opportunities/evaluate, POST /api/economics/scenarios, POST /api/economics/break-even
 - POST /api/marketing/experiments, POST /api/marketing/experiments/{id}/observations, GET /api/marketing/experiments/{id}
 - GET /api/trends/history, GET /api/finance/profit-and-loss
 - POST /api/orders/prepare-from-quote
