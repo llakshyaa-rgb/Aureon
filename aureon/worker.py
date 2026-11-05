@@ -1,4 +1,4 @@
-"""Safe mock-mode worker for persistent commerce workflows."""
+"""Local worker for persistent, non-publishing commerce workflows."""
 from .jobs import claim_next,finish,fail
 from .commerce import build_design_brief,generate_listing_draft,draft_marketing_content,triage_support_ticket
 from .intelligence.economics import Offer,calculate_unit_economics,compare_channels
@@ -31,7 +31,7 @@ def process_job(job,db_path=None):
   if db_path is None:raise ValueError("database path required")
   result=create_record(db_path,"product",payload["title"],payload.get("data",{}),"draft")
  else:raise ValueError("No safe processor registered for job kind: "+kind)
- return {"mode":"mock","kind":kind,"result":result}
+ return {"mode":"local","kind":kind,"result":result}
 def run_once(db_path):
  initialize_workspace(db_path)
  job=claim_next(db_path)
@@ -49,3 +49,18 @@ def run_until_empty(db_path,max_jobs=100):
   if outcome is None:break
   outcomes.append(outcome)
  return outcomes
+
+
+def background_loop(db_path, stop_event, interval=3):
+    """Process local jobs and due schedules while the dashboard server is running."""
+    import time
+    from .scheduler import initialize_scheduler, enqueue_due
+    initialize_workspace(db_path)
+    initialize_scheduler(db_path)
+    while not stop_event.is_set():
+        try:
+            enqueue_due(db_path)
+            run_once(db_path)
+        except Exception as exc:
+            print("[worker] background cycle failed:", str(exc))
+        stop_event.wait(max(1, min(float(interval), 60)))
