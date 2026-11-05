@@ -39,6 +39,11 @@ class ExpandedCommerceTests(unittest.TestCase):
   self.assertEqual(order["data"]["total_supplier_cost"],19)
   self.assertEqual(order["data"]["supplier_cost_breakdown"]["shipping_total"],3)
   self.assertTrue(prepared["approval_required_before_supplier_submission"])
+ def test_stale_supplier_quote_cannot_prepare_order(self):
+  supplier=add_supplier(self.db,"Old supplier","manual","desk mat")
+  add_quote(self.db,supplier["id"],{"product_cost":1,"shipping_cost":1,"currency":"USD","destination":"US","quoted_at":"2026-10-01T10:00:00+00:00"})
+  with self.assertRaises(ValueError):
+   prepare_order_from_best_quote(self.db,"Desk mat",1,"desk mat","US","USD")
  def test_order_approval_is_matching_single_use_and_amount_bound(self):
   order=create_order(self.db,"Desk mat",2,8,"USD")
   with self.assertRaises(ValueError):record_supplier_submission(self.db,order["id"],999,"PO-1")
