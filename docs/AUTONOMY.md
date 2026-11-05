@@ -12,7 +12,7 @@ Aureon should automate research and preparation aggressively while protecting mo
 | Sensitive account | Payout, bank, tax, identity, permissions | Human-only; never agent-controlled |
 
 ## Approval record
-An approval identifies the exact action, target account/provider, item/order, amount and currency, maximum amount, expiry, requester, approver, decision and timestamp. It is single-use. Changed amounts or destinations require new approval.
+An approval identifies the exact action, target, amount and currency where relevant, and is single-use. Pending approvals expire 24 hours after request. Changed amounts or destinations require a new approval.
 
 ## Reliability rules
 - Persist job state before external side effects.
