@@ -24,6 +24,50 @@ class PrintifyProviderTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 printify.upload_image_url("art.png", "http://example.com/art.png")
 
+    def test_product_payload_is_normalized_and_hidden(self):
+        product = {
+            "title": " Test shirt ",
+            "blueprint_id": "384",
+            "print_provider_id": "1",
+            "variants": [{"id": "45740", "price": 1200, "is_enabled": True}],
+            "print_areas": [{
+                "variant_ids": [45740],
+                "placeholders": [{
+                    "position": "front",
+                    "decoration_method": "dtg",
+                    "images": [{"id": "uploaded-image-id", "x": 0.5, "y": 0.5, "scale": 1, "angle": 0}],
+                }],
+            }],
+            "visible": True,
+        }
+        shop_id, payload = printify.validate_product("12", product)
+        self.assertEqual(shop_id, 12)
+        self.assertEqual(payload["title"], "Test shirt")
+        self.assertIs(payload["visible"], False)
+        self.assertEqual(payload["variants"][0]["id"], 45740)
+
+    def test_print_area_cannot_reference_unknown_variant(self):
+        product = {
+            "title": "Test",
+            "blueprint_id": 384,
+            "print_provider_id": 1,
+            "variants": [{"id": 45740, "price": 1200, "is_enabled": True}],
+            "print_areas": [{
+                "variant_ids": [99999],
+                "placeholders": [{
+                    "position": "front", "decoration_method": "dtg",
+                    "images": [{"id": "uploaded-image-id"}],
+                }],
+            }],
+        }
+        with self.assertRaises(ValueError):
+            printify.validate_product(12, product)
+
+    def test_upload_rejects_single_backslash_filename(self):
+        with patch.dict(os.environ, {"AUREON_PRINTIFY_API_TOKEN": "token"}):
+            with self.assertRaises(ValueError):
+                printify.upload_image_url("folder" + chr(92) + "art.png", "https://example.com/art.png")
+
     def test_missing_token_is_rejected(self):
         with patch.dict(os.environ, {"AUREON_PRINTIFY_API_TOKEN": ""}):
             with self.assertRaises(RuntimeError):
