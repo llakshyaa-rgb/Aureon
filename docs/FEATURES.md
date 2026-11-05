@@ -16,7 +16,7 @@ Normalized supplier and POD catalog search; price, availability, quality, rating
 ## 3. Profitability and Business Model Selection
 Product, shipping, packaging, platform, payment, advertising, return, tax, duty and FX cost inputs; contribution profit, margin and break-even ad cost; POD versus dropshipping comparison; price recommendations and sensitivity analysis; cash required to fulfill an order; reject, investigate or recommend with evidence.
 
-## 4. AI Creative Studio
+## 4. Creative Studio
 Original apparel and product artwork; collections and variations; mockups and promotional assets; print-ready validation for dimensions, transparency, safe areas and provider requirements; brand identities and logos; trademark/copyright risk screening with human review; design-to-product matching.
 
 ## 5. Product Catalog and Listing SEO
@@ -28,7 +28,7 @@ Shopify and WooCommerce storefront adapters; Printify, Printful and Gelato POD a
 ## 7. Order and Fulfillment Operations
 Order intake and validation; supplier routing; purchase-order preparation; approval-gated supplier ordering and funds checks; production, dispatch, delivery and tracking sync; failed, delayed, duplicate and partial-order detection; controlled cancellation and refund workflows.
 
-## 8. AI Customer Support
+## 8. Customer Support
 Inquiry classification and order context; product, shipping and delivery response drafts; complaint, escalation and chargeback-risk detection; conversation history; policy-aware support; human approval for refunds and financial/legal commitments.
 
 ## 9. Marketing and Growth
