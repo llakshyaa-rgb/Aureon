@@ -1,7 +1,8 @@
 import tempfile,unittest
 from pathlib import Path
-from aureon.db import initialize
-from aureon.workflows import initialize_workspace,decide_approval
+from datetime import datetime,timedelta,timezone
+from aureon.db import initialize,connect
+from aureon.workflows import initialize_workspace,decide_approval,request_approval
 from aureon.support import open_ticket,draft_response,support_queue,add_internal_note
 from aureon.finance import reconcile,cashflow_projection
 from aureon.marketing import create_campaign,request_campaign_approval,campaign_overview
@@ -73,6 +74,17 @@ class LastSixTests(unittest.TestCase):
   record_supplier_submission(self.db,order["id"],approval["id"],"SIM-PO-3")
   with self.assertRaises(ValueError):
    request_refund_review(self.db,order["id"],0.001,"Too small")
+ def test_pending_approval_expires_and_cannot_be_approved(self):
+  approval=request_approval(self.db,"spend_on_ads","campaign","campaign-1","Review budget",10,"USD")
+  self.assertIsNotNone(approval["expires_at"])
+  expired=(datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat()
+  with connect(self.db) as conn:
+   conn.execute("UPDATE approvals SET expires_at=? WHERE id=?",(expired,approval["id"]))
+  with self.assertRaises(ValueError):
+   decide_approval(self.db,approval["id"],"approved")
+  with connect(self.db) as conn:
+   status=conn.execute("SELECT status FROM approvals WHERE id=?",(approval["id"],)).fetchone()["status"]
+  self.assertEqual(status,"expired")
  def test_command_center_is_read_only_and_safe(self):
   snap=dashboard_snapshot(self.db);self.assertEqual(snap["mode"],"local")
   self.assertFalse(snap["safety"]["publishing_enabled"])
