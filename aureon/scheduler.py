@@ -46,8 +46,8 @@ def enqueue_due(db_path,now=None,limit=50):
      raise ValueError("scheduled idempotency key conflicts with an existing job")
     job_id=existing["id"]
    else:
-    cur=conn.execute("INSERT INTO jobs(kind,payload_json,idempotency_key) VALUES(?,?,?)",
-     (row["kind"],row["payload_json"],row["idempotency_key"]))
+    cur=conn.execute("INSERT INTO jobs(kind,payload_json,idempotency_key,max_attempts) VALUES(?,?,?,?)",
+     (row["kind"],row["payload_json"],row["idempotency_key"],1 if row["kind"]=="agent.run" else 3))
     job_id=cur.lastrowid
     conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
      ("job.queued","job",str(job_id),json_dump({"kind":row["kind"],"scheduled_id":row["id"]})))
