@@ -21,9 +21,14 @@ class JobQueueTests(unittest.TestCase):
         finish(self.db, claimed["id"], {"signals": 3})
         self.assertEqual(list_jobs(self.db)[0]["status"], "succeeded")
     def test_idempotency_key(self):
-        first = enqueue(self.db, "listing.draft", {}, "same-request")
-        second = enqueue(self.db, "listing.draft", {"ignored": True}, "same-request")
+        first = enqueue(self.db, "listing.draft", {"query": "desk mats"}, "same-request")
+        second = enqueue(self.db, "listing.draft", {"query": "desk mats"}, "same-request")
         self.assertEqual(first["id"], second["id"])
+        self.assertEqual(len(list_jobs(self.db)), 1)
+        with self.assertRaises(ValueError):
+            enqueue(self.db, "listing.draft", {"query": "different"}, "same-request")
+        with self.assertRaises(ValueError):
+            enqueue(self.db, "research.scan", {"query": "desk mats"}, "same-request")
         self.assertEqual(len(list_jobs(self.db)), 1)
     def test_retry_is_bounded(self):
         job = enqueue(self.db, "supplier.quote", {}, max_attempts=1)
