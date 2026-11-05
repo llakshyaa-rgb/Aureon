@@ -67,7 +67,7 @@ def transition_record(path,record_id,status):
   conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",("workspace."+row["kind"]+".status",row["kind"],str(record_id),json_dump({"from":row["status"],"status":status})))
   return _record(conn.execute("SELECT * FROM workspace_records WHERE id=?",(record_id,)).fetchone())
 def request_approval(path,action,target_type,target_id,reason,amount=None,currency=None):
- if action not in {"publish_listing","publish_campaign","place_supplier_order","spend_on_ads","issue_refund","send_commitment"}: raise ValueError("unsupported approval action")
+ if action not in {"publish_listing","publish_campaign","place_supplier_order","spend_on_ads","issue_refund","send_commitment","create_shopify_draft"}: raise ValueError("unsupported approval action")
  if not isinstance(target_type,str) or not target_type.strip() or not isinstance(target_id,(str,int)) or not str(target_id).strip() or not isinstance(reason,str) or not reason.strip(): raise ValueError("target_type, target_id and reason are required")
  if amount is not None and (isinstance(amount,bool) or not isinstance(amount,(int,float)) or not math.isfinite(amount) or amount<0): raise ValueError("amount must be finite and non-negative")
  if amount is not None and (not isinstance(currency,str) or not re.fullmatch(r"[A-Za-z]{3}",currency)): raise ValueError("currency is required for amount")
