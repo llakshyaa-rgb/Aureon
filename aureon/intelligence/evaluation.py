@@ -26,6 +26,8 @@ def evaluate_product_opportunity(db_path, title, evidence, signals, observations
         raise ValueError("offer must be an object")
     offer = Offer(**offer)
     economics = calculate_unit_economics(offer)
+    if economics["currency"] != competition["currency"]:
+        raise ValueError("offer and competitor observations must use the same currency")
     margin_score = max(0, min(100, economics["profit_margin"] * 200))
     score_inputs = {**signals, "competition": 100 - competition["saturation_heuristic"],
                     "margin": margin_score}
