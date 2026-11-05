@@ -63,7 +63,9 @@ def make_handler(db_path):
    if path=="/": return self._send(200,PAGE,"text/html")
    if path=="/health": return self._send(200,{"ok":True,"version":__version__,"mode":"local","live_data":["google_trends_public_rss"]})
    if path=="/api/trends":
-    q=parse_qs(urlparse(self.path).query);return self._send(200,fetch_trending_searches(q.get("geo",["IN"])[0]))
+    q=parse_qs(urlparse(self.path).query)
+    try: return self._send(200,fetch_trending_searches(q.get("geo",["IN"])[0]))
+    except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
    if path=="/api/providers": return self._send(200,{"runtime":"local","live_data_sources":[{"name":"Google Trends public RSS","status":"available_without_credentials"}],"commerce_integrations":[{"name":"Shopify","status":"not_connected"},{"name":"Printify","status":"not_connected"},{"name":"Printful","status":"not_connected"}]})
    if path=="/api/overview":
     with connect(db_path) as c:
