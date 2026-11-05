@@ -17,17 +17,28 @@ def enqueue(path: Path, kind: str, payload=None, idempotency_key=None, max_attem
         raise ValueError("kind must be a non-empty string of at most 100 characters")
     if payload is not None and not isinstance(payload, dict):
         raise ValueError("payload must be an object")
-    if not 1 <= int(max_attempts) <= 10:
-        raise ValueError("max_attempts must be between 1 and 10")
-    if idempotency_key is not None and (not isinstance(idempotency_key, str) or len(idempotency_key) > 200):
-        raise ValueError("idempotency_key must be at most 200 characters")
+    try:
+        max_attempts = int(max_attempts)
+    except (TypeError, ValueError):
+        raise ValueError("max_attempts must be an integer between 1 and 10") from None
+    if isinstance(max_attempts, bool) or not 1 <= max_attempts <= 10:
+        raise ValueError("max_attempts must be an integer between 1 and 10")
+    if idempotency_key is not None and (
+        not isinstance(idempotency_key, str) or not idempotency_key.strip() or len(idempotency_key) > 200
+    ):
+        raise ValueError("idempotency_key must be 1-200 non-whitespace characters")
+    normalized_payload = json_dump(payload or {})
+    normalized_kind = kind.strip()
     with connect(path) as conn:
-        if idempotency_key:
+        if idempotency_key is not None:
             old = conn.execute("SELECT * FROM jobs WHERE idempotency_key=?", (idempotency_key,)).fetchone()
             if old:
+                if (old["kind"] != normalized_kind or old["payload_json"] != normalized_payload
+                        or old["max_attempts"] != max_attempts):
+                    raise ValueError("idempotency_key already belongs to a different job request")
                 return serialize(old)
         cur = conn.execute("INSERT INTO jobs(kind,payload_json,idempotency_key,max_attempts) VALUES(?,?,?,?)",
-                           (kind.strip(), json_dump(payload or {}), idempotency_key, max_attempts))
+                           (normalized_kind, normalized_payload, idempotency_key, max_attempts))
         job_id = cur.lastrowid
         conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
                      ("job.queued", "job", str(job_id), json_dump({"kind": kind.strip()})))
