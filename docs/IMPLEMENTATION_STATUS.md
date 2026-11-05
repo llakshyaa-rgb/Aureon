@@ -61,7 +61,7 @@ Provider code is committed, but credentials must be configured locally and each 
 
 ## Verification
 
-The repository currently contains 63 unit tests covering the local core, workflows, trend collection, worker retry behavior, Shopify validation and Printify product payload validation. The latest additions have not been run in the target Termux environment. Run:
+The repository currently contains 65 unit tests covering the local core, workflows, trend collection, worker retry behavior, Shopify validation and Printify product payload validation. The latest additions have not been run in the target Termux environment. Run:
 
     git pull --ff-only
     python -m unittest discover -s tests -v
