@@ -10,9 +10,12 @@ def profit_and_loss(db_path, start=None, end=None, currency=None):
         if not isinstance(value, str):
             raise ValueError(label + " must be an ISO date or timestamp")
         try:
+            date_only = len(value) == 10
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
             if parsed.tzinfo is None:
                 parsed = parsed.replace(tzinfo=timezone.utc)
+            if date_only and label == "end":
+                parsed = parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
             return parsed.astimezone(timezone.utc).isoformat()
         except ValueError:
             raise ValueError(label + " must be an ISO date or timestamp") from None
