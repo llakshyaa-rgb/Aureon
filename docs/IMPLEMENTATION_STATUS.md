@@ -69,7 +69,7 @@ Provider code is committed, but credentials must be configured locally and each 
 
 ## Verification
 
-The repository includes tests for the local core, workflows, trend collection/history, worker retry behavior, Shopify validation, Printify product payload validation, creative assets, competitor analysis, pricing scenarios, P&L and dependency-aware agent plans. The latest additions have not been run in the target Termux environment. Run:
+The repository currently contains 91 test cases covering the local core, workflows, trend collection/history, worker retry behavior, Shopify and Printify validation, creative assets, competitor analysis, pricing scenarios, P&L, A/B experiments, backups and dependency-aware agent plans. The latest additions have not been run in the target Termux environment. Run:
 
     git pull --ff-only
     python -m unittest discover -s tests -v
