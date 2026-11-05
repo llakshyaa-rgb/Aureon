@@ -5,6 +5,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 BASE = "https://api.printify.com/v1"
+BASE_V2 = "https://api.printify.com/v2"
 
 
 def health():
@@ -13,13 +14,14 @@ def health():
             "mode": "credentials_configured" if token else "disconnected"}
 
 
-def request(path):
+def request(path, version=1):
     token = os.getenv("AUREON_PRINTIFY_API_TOKEN", "").strip()
     if not token:
         raise RuntimeError("Printify token is not configured.")
     if not path.startswith("/") or ".." in path or "#" in path:
         raise ValueError("invalid Printify API path")
-    req = Request(BASE + path, headers={
+    base = BASE_V2 if version == 2 else BASE
+    req = Request(base + path, headers={
         "Authorization": "Bearer " + token,
         "User-Agent": "AureonCommerce/0.3",
         "Accept": "application/json",
@@ -76,4 +78,4 @@ def shipping(blueprint_id, provider_id):
     if isinstance(provider_id, bool) or not str(provider_id).isdigit():
         raise ValueError("provider_id must be numeric")
     path = "/catalog/blueprints/" + str(int(blueprint_id)) + "/print_providers/" + str(int(provider_id)) + "/shipping.json"
-    return request(path.replace("/catalog/", "/catalog/"))
+    return request(path, version=2)
