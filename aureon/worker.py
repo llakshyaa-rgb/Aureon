@@ -1,7 +1,7 @@
 """Local worker for persistent, non-publishing commerce workflows."""
 from .jobs import claim_next,finish,fail
 from .commerce import build_design_brief,generate_listing_draft,draft_marketing_content,triage_support_ticket
-from .creative import create_asset,generate_vector_artwork
+from .creative import create_asset,generate_vector_artwork,create_collection
 from .intelligence.product_research import analyze_competition
 from .intelligence.scenarios import pricing_scenarios
 from .intelligence.evaluation import evaluate_product_opportunity
@@ -10,6 +10,7 @@ from .research import save_opportunity
 from .analytics import campaign_metrics,record_campaign_metrics
 from .workflows import create_record,initialize_workspace
 from .trends import collect_trends
+from .suppliers import prepare_order_from_best_quote
 def process_job(job,db_path=None):
  payload=job["payload"];kind=job["kind"]
  if kind=="design.brief":
@@ -17,10 +18,16 @@ def process_job(job,db_path=None):
   if db_path is not None:result={"draft":result,"record":create_record(db_path,"design",payload.get("concept","Design brief"),result,"brief")}
  elif kind=="creative.generate":
   result=create_asset(db_path,**payload) if db_path is not None else generate_vector_artwork(**payload)
+ elif kind=="creative.collection":
+  if db_path is None:raise ValueError("database path required")
+  result=create_collection(db_path,**payload)
  elif kind=="research.competitors":result=analyze_competition(payload["observations"])
  elif kind=="opportunity.evaluate":
   if db_path is None:raise ValueError("database path required")
   result=evaluate_product_opportunity(db_path,**payload)
+ elif kind=="supplier.order.prepare":
+  if db_path is None:raise ValueError("database path required")
+  result=prepare_order_from_best_quote(db_path,**payload)
  elif kind=="economics.scenarios":
   result=pricing_scenarios(Offer(**payload["offer"]),payload.get("prices"),payload.get("target_margin",0.25))
  elif kind=="listing.draft":
