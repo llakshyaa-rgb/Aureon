@@ -1,12 +1,13 @@
 """Verified local SQLite backups with bounded retention."""
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 def _check(path):
-    with sqlite3.connect(str(path)) as conn:
+    with closing(sqlite3.connect(str(path))) as conn:
         result = conn.execute("PRAGMA integrity_check").fetchone()
     if not result or result[0] != "ok":
         raise RuntimeError("SQLite integrity check failed: " + str(path))
@@ -34,7 +35,7 @@ def backup_database(db_path, backup_dir=None, retain=7):
     target = folder / ("aureon-" + stamp + ".sqlite3")
     temp = target.with_suffix(".tmp")
     try:
-        with sqlite3.connect(str(source), timeout=20) as src, sqlite3.connect(str(temp)) as dst:
+        with closing(sqlite3.connect(str(source), timeout=20)) as src, closing(sqlite3.connect(str(temp))) as dst:
             src.backup(dst)
         _check(temp)
         os.replace(temp, target)
@@ -70,7 +71,7 @@ def restore_backup(db_path, backup_path, backup_dir=None):
     target.parent.mkdir(parents=True, exist_ok=True)
     temp = target.with_name(target.name + ".restore.tmp")
     try:
-        with sqlite3.connect(str(source)) as src, sqlite3.connect(str(temp)) as dst:
+        with closing(sqlite3.connect(str(source))) as src, closing(sqlite3.connect(str(temp))) as dst:
             src.backup(dst)
         _check(temp)
         os.replace(temp, target)
