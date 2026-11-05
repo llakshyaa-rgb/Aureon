@@ -1,7 +1,6 @@
-"""Printify read-only shop and catalog discovery."""
+"""Printify shop/catalog discovery, artwork upload and hidden product creation."""
 import json
 import os
-import re
 import math
 import ipaddress
 from urllib.parse import urlparse
@@ -132,6 +131,13 @@ def validate_product(shop_id, product):
     description = product.get("description", "")
     if not isinstance(description, str) or len(description) > 5000:
         raise ValueError("description must be text of at most 5000 characters")
+    if "tags" in product and (not isinstance(product["tags"], list) or
+                              any(not isinstance(tag, str) for tag in product["tags"])):
+        raise ValueError("tags must be a list of text values")
+    if "safety_information" in product and not isinstance(product["safety_information"], str):
+        raise ValueError("safety_information must be text")
+    if "print_details" in product and not isinstance(product["print_details"], dict):
+        raise ValueError("print_details must be an object")
     variants_data = product.get("variants")
     if not isinstance(variants_data, list) or not variants_data:
         raise ValueError("at least one variant is required")
