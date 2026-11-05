@@ -9,8 +9,11 @@ from pathlib import Path
 def _check(path):
     with closing(sqlite3.connect(str(path))) as conn:
         result = conn.execute("PRAGMA integrity_check").fetchone()
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     if not result or result[0] != "ok":
         raise RuntimeError("SQLite integrity check failed: " + str(path))
+    if not {"workspace_records", "jobs", "events"}.issubset(tables):
+        raise ValueError("file is not a valid Aureon database backup")
 
 
 def list_backups(db_path, backup_dir=None):
