@@ -157,3 +157,23 @@ def create_asset(db_path, **kwargs):
 def list_assets(db_path, limit=50):
     return [r for r in list_records(db_path, "design", limit)
             if r["data"].get("asset_type") == "vector_artwork"]
+
+
+def create_collection(db_path, title, concept, styles, palette="midnight"):
+    title = _text(title, "collection title", 100)
+    concept = _text(concept, "collection concept", 240)
+    if not isinstance(styles, list) or not 1 <= len(styles) <= 5:
+        raise ValueError("collection must contain 1-5 styles")
+    if len(set(styles)) != len(styles):
+        raise ValueError("collection styles must be unique")
+    variants = []
+    for index, style in enumerate(styles, 1):
+        asset = create_asset(db_path, title=title + " · " + str(index), concept=concept,
+                             style=style, palette=palette)
+        variants.append({"record_id": asset["record"]["id"], "title": asset["artwork"]["title"],
+                         "style": style, "qa_passed": asset["artwork"]["qa"]["passed"]})
+    collection = create_record(db_path, "design", title,
+        {"asset_type": "creative_collection", "concept": concept, "palette": palette,
+         "variants": variants, "variant_count": len(variants)}, "review")
+    return {"collection": collection, "variants": variants,
+            "warning": "Generated vector variations require rights, brand and provider-template review."}
