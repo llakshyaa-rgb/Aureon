@@ -17,16 +17,25 @@ from .marketing import create_campaign,request_campaign_approval,campaign_overvi
 from .finance import record_transaction,reconcile,cashflow_projection,financial_dashboard
 from .agents import submit_plan,runtime_status
 from .command_center import dashboard_snapshot,interpret_command
+from .trends import fetch_trending_searches
 PAGE="""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aureon</title>
 <style>:root{color-scheme:dark;font-family:system-ui;background:#0b1020;color:#e8edf7}body{max-width:1000px;margin:28px auto;padding:0 16px}
 header,.grid{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}h1{letter-spacing:-1px}.muted,small{color:#9aa8bd}
 .panel,.stat{background:#121b30;border:1px solid #263650;border-radius:14px;padding:16px;margin:12px 0}.stat{flex:1;min-width:100px}.stat b{display:block;font-size:24px}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#bcd0ee}</style>
-<header><div><h1>Aureon</h1><span class="muted">Commerce operations · local control plane</span></div><small>v__VERSION__ · MOCK MODE</small></header>
+<header><div><h1>Aureon</h1><span class="muted">Commerce operations · local control plane</span></div><small>v__VERSION__ · LOCAL WORKSPACE + LIVE PUBLIC DATA</small></header>
+<section class="panel"><h2>Live opportunity discovery</h2><p class="muted">Current public Google Trends searches. Attention signals only; not validated demand or sales.</p><div class="grid"><input id="geo" value="IN" maxlength="2"><button onclick="loadTrends()">Fetch live trends</button></div><pre id="trends">Not fetched yet.</pre></section>
+<section class="panel"><h2>Create product</h2><div class="grid"><input id="productTitle" placeholder="Product name"><input id="productPrice" type="number" min="0" step="0.01" placeholder="Selling price"><input id="productCurrency" value="INR" maxlength="3"><button onclick="createProduct()">Save product</button></div><pre id="productResult"></pre></section>
+<section class="panel"><h2>Record finance transaction</h2><div class="grid"><select id="financeType"><option value="revenue">Revenue</option><option value="supplier_cost">Supplier cost</option><option value="shipping">Shipping</option><option value="advertising">Advertising</option><option value="other_cost">Other cost</option></select><input id="financeAmount" type="number" min="0" step="0.01" placeholder="Amount"><input id="financeCurrency" value="INR" maxlength="3"><input id="financeDescription" placeholder="Description"><button onclick="addFinance()">Save transaction</button></div><pre id="financeResult"></pre></section>
 <section class="panel"><h2>Workspace overview</h2><div class="grid" id="stats">Loading…</div></section>
 <section class="panel"><h2>Finance snapshot</h2><pre id="finance">Loading…</pre></section>
 <section class="panel"><h2>Recent work</h2><pre id="records">Loading…</pre></section><section class="panel"><h2>Job queue</h2><pre id="jobs">Loading…</pre></section><section class="panel"><h2>Support queue</h2><pre id="support">Loading…</pre></section><section class="panel"><h2>Campaigns</h2><pre id="campaigns">Loading…</pre></section><section class="panel"><h2>Approvals</h2><pre id="approvals">Loading…</pre></section><section class="panel"><h2>Agent runtime</h2><pre id="agents">Loading…</pre></section>
-<script>async function get(p){const r=await fetch(p);if(!r.ok)throw Error(r.status);return r.json()}
+<script>async function get(p){const r=await fetch(p);if(!r.ok)throw Error((await r.text())||r.status);return r.json()}
+async function post(p,b){const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok)throw Error(d.error||r.status);return d}
+async function loadTrends(){const el=document.getElementById('trends');el.textContent='Fetching…';try{const d=await get('/api/trends?geo='+encodeURIComponent(document.getElementById('geo').value));el.textContent=JSON.stringify(d,null,2)}catch(e){el.textContent=String(e)}}
+async function createProduct(){try{const d=await post('/api/records',{kind:'product',title:document.getElementById('productTitle').value,data:{selling_price:Number(document.getElementById('productPrice').value),currency:document.getElementById('productCurrency').value.toUpperCase()}});document.getElementById('productResult').textContent='Saved product #'+d.record.id;refresh()}catch(e){document.getElementById('productResult').textContent=String(e)}}
+async function addFinance(){try{const d=await post('/api/finance',{entry_type:document.getElementById('financeType').value,amount:Number(document.getElementById('financeAmount').value),currency:document.getElementById('financeCurrency').value.toUpperCase(),description:document.getElementById('financeDescription').value,actual:true});document.getElementById('financeResult').textContent='Saved transaction #'+d.entry.id;refresh()}catch(e){document.getElementById('financeResult').textContent=String(e)}}
+
 async function refresh(){try{const [o,f,r,j,s,m,a,g]=await Promise.all([get('/api/overview'),get('/api/finance'),get('/api/records'),get('/api/jobs'),get('/api/support'),get('/api/marketing/campaigns'),get('/api/approvals'),get('/api/agents')]);
 document.getElementById('stats').innerHTML=Object.entries(o.records).map(([k,v])=>'<div class="stat"><b>'+v+'</b><small>'+k.replaceAll('_',' ')+'</small></div>').join('');
 document.getElementById('finance').textContent=JSON.stringify(f.summary,null,2);
@@ -52,7 +61,10 @@ def make_handler(db_path):
   def do_GET(self):
    path=urlparse(self.path).path
    if path=="/": return self._send(200,PAGE,"text/html")
-   if path=="/health": return self._send(200,{"ok":True,"version":__version__,"mode":"mock"})
+   if path=="/health": return self._send(200,{"ok":True,"version":__version__,"mode":"local","live_data":["google_trends_public_rss"]})
+   if path=="/api/trends":
+    q=parse_qs(urlparse(self.path).query);return self._send(200,fetch_trending_searches(q.get("geo",["IN"])[0]))
+   if path=="/api/providers": return self._send(200,{"runtime":"local","live_data_sources":[{"name":"Google Trends public RSS","status":"available_without_credentials"}],"commerce_integrations":[{"name":"Shopify","status":"not_connected"},{"name":"Printify","status":"not_connected"},{"name":"Printful","status":"not_connected"}]})
    if path=="/api/overview":
     with connect(db_path) as c:
      jobs=c.execute("SELECT status,COUNT(*) n FROM jobs GROUP BY status").fetchall()
@@ -127,6 +139,6 @@ def serve(host,port,db_path):
  recovered=recover_interrupted(db_path)
  if recovered["requeued"] or recovered["failed"]: print("Recovered interrupted jobs:",recovered)
  server=ThreadingHTTPServer((host,port),make_handler(db_path))
- print("Aureon: http://%s:%s (mock mode; Ctrl+C to stop)"%(host,port))
+ print("Aureon: http://%s:%s (local workspace; Ctrl+C to stop)"%(host,port))
  try: server.serve_forever()
  finally: server.server_close()
