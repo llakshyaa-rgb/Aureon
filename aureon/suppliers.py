@@ -4,7 +4,6 @@ from datetime import datetime,timezone
 from urllib.parse import urlparse
 from .workflows import create_record,list_records
 from .db import connect,json_dump
-from .operations import create_order
 def add_supplier(db_path,name,provider,product_type,website=None,notes=""):
  for label,value,limit in (("name",name,200),("provider",provider,80),("product_type",product_type,100)):
   if not isinstance(value,str) or not value.strip() or len(value)>limit:raise ValueError(label+" is required and must be <= "+str(limit)+" characters")
@@ -69,6 +68,7 @@ def prepare_order_from_best_quote(db_path, product_title, quantity, product_type
     quote = best["quote"]
     total = round(quantity * quote["product_cost"] + quote["shipping_cost"], 2)
     blended_unit_cost = total / quantity
+    from .operations import create_order
     order = create_order(db_path, product_title, quantity, blended_unit_cost, currency, best["supplier_id"])
     data = order["data"]
     data.update({"supplier_cost_breakdown": {
