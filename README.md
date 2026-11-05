@@ -38,7 +38,7 @@ Public Trending RSS by country code. Fetch trends in the dashboard, or save uniq
 Admin GraphQL adapter for connection testing, product catalog reads and creating unpublished DRAFT products after a separate approval request and an explicit approval action in the dashboard. Uses API version 2026-10. Create a custom app on a development store with read_products and write_products scopes. Set AUREON_SHOPIFY_STORE and AUREON_SHOPIFY_ACCESS_TOKEN in the local .env file. No publishing, order placement, inventory mutation, refunds or payments are exposed.
 
 ### Printify
-Read-only merchant shop and catalog discovery: shops, product blueprints, print providers, variants and shipping data. Set AUREON_PRINTIFY_API_TOKEN in .env with shops.read and catalog.read scopes. Product creation, artwork upload and order submission are not enabled.
+Read-only merchant shop and catalog discovery: shops, product blueprints, print providers, variants and shipping data. Set AUREON_PRINTIFY_API_TOKEN in .env. Read-only discovery needs shops.read and catalog.read; artwork upload needs uploads.write; unpublished product creation needs products.write. Upload an artwork URL, inspect a blueprint/provider/variant combination, then submit a product payload through the separate approval flow. Product creation does not publish it. Publishing, order submission and fulfillment are not enabled.
 
 A provider token being present only means credentials are configured. Use the dashboard's connection check to confirm actual access. Never paste credentials into chat or commit .env.
 
@@ -48,7 +48,7 @@ A provider token being present only means credentials are configured. Use the da
 - GET /api/shopify/connection, GET /api/shopify/products, POST /api/shopify/drafts/approval, POST /api/shopify/drafts
 - GET /api/printify/shops, GET /api/printify/blueprints
 - GET /api/printify/blueprints/{id}/providers
-- GET /api/printify/blueprints/{id}/providers/{provider_id}/variants and /shipping
+- GET /api/printify/blueprints/{id}/providers/{provider_id}/variants and /shipping\n- POST /api/printify/uploads, POST /api/printify/products/approval, POST /api/printify/products
 - GET /api/overview, GET /api/jobs, GET/POST /api/records, PATCH /api/records/{id}
 - POST /api/opportunities/assess
 - GET/POST /api/suppliers, POST /api/suppliers/{id}/quotes, GET /api/suppliers/compare
@@ -64,7 +64,7 @@ A provider token being present only means credentials are configured. Use the da
 
 ## Not yet a fully autonomous commerce operator
 
-WooCommerce, Printful and Gelato are not connected. Printify product creation and fulfillment are not enabled. Shopify product publication, payment processing, inventory synchronization and order fulfillment are not enabled. Supplier quotes remain manually entered unless separately verified. Customer inboxes, customer messaging, social publishing, ad buying, bank feeds, tax and FX providers are not connected.
+WooCommerce, Printful and Gelato are not connected. Printify product creation is approval-gated and remains unpublished; Printify order submission and fulfillment are not enabled. Shopify product publication, payment processing, inventory synchronization and order fulfillment are not enabled. Supplier quotes remain manually entered unless separately verified. Customer inboxes, customer messaging, social publishing, ad buying, bank feeds, tax and FX providers are not connected.
 
 External spending, publishing, purchases, refunds and customer commitments remain human-controlled. The server is localhost-only, not a public production API or storefront.
 
