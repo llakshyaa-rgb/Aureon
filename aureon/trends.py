@@ -125,16 +125,14 @@ def trend_history(db_path, geo="IN", limit=100):
             "SELECT data_json FROM events WHERE topic='trends.snapshot' AND entity_id=? ORDER BY id DESC LIMIT ?",
             (geo.upper(), limit)).fetchall()
     snapshots = [json.loads(row["data_json"]) for row in reversed(rows)]
-    previous = {}
     movement = {}
-    for snapshot in snapshots:
-        current = {item["title"]: rank for rank, item in enumerate(snapshot["items"], 1)}
-        for title, rank in current.items():
-            if title in previous:
-                movement[title] = {"previous_rank": previous[title], "latest_rank": rank,
-                                   "movement": previous[title] - rank,
-                                   "direction": "rising" if rank < previous[title] else "falling" if rank > previous[title] else "steady"}
-            previous[title] = rank
+    if len(snapshots) >= 2:
+        previous = {item["title"]: rank for rank, item in enumerate(snapshots[-2]["items"], 1)}
+        latest = {item["title"]: rank for rank, item in enumerate(snapshots[-1]["items"], 1)}
+        for title in sorted(set(previous) & set(latest)):
+            movement[title] = {"previous_rank": previous[title], "latest_rank": latest[title],
+                               "movement": previous[title] - latest[title],
+                               "direction": "rising" if latest[title] < previous[title] else "falling" if latest[title] > previous[title] else "steady"}
     return {"geo": geo.upper(), "snapshots": snapshots, "snapshot_count": len(snapshots),
             "rank_movement": movement,
             "warning": "Rank movement compares only Aureon-collected RSS snapshots. Missing snapshots are not inferred; this is not search volume or product demand."}
