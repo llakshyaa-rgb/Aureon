@@ -25,7 +25,7 @@ This document distinguishes implemented local workflows, live read-only provider
 ### Shopify Admin GraphQL
 - Connection test against a configured store.
 - Read product catalog.
-- Create an unpublished DRAFT product from the dashboard after an explicit confirmation.
+- Create an unpublished DRAFT product from the dashboard after a separate approval request and explicit approval action.
 - Uses API version 2026-10 and requires read_products and write_products scopes.
 - No product publishing, order placement, inventory mutation, refunds or payments.
 
