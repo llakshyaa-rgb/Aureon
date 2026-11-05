@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from aureon.db import initialize
 from aureon.workflows import initialize_workspace, add_finance_entry
-from aureon.creative import generate_vector_artwork, validate_svg_artwork, create_asset, list_assets
+from aureon.creative import generate_vector_artwork, validate_svg_artwork, create_asset, list_assets, create_collection
 from aureon.intelligence.product_research import analyze_competition
 from aureon.intelligence.economics import Offer
 from aureon.intelligence.scenarios import pricing_scenarios, break_even_orders
@@ -37,6 +37,14 @@ class ExtendedCapabilityTests(unittest.TestCase):
                               style="botanical", palette="forest")
         self.assertEqual(result["record"]["status"], "generated")
         self.assertEqual(len(list_assets(self.db)), 1)
+
+    def test_collection_creates_multiple_saved_variants(self):
+        result = create_collection(self.db, "Orbit Collection", "A planetary series",
+                                   ["orbit", "badge", "geometric"], "ocean")
+        self.assertEqual(result["collection"]["data"]["variant_count"], 3)
+        self.assertEqual(len(list_assets(self.db)), 3)
+        with self.assertRaises(ValueError):
+            create_collection(self.db, "Bad", "Repeated", ["orbit", "orbit"])
 
     def test_competitor_analysis_is_currency_matched_and_explained(self):
         result = analyze_competition([
