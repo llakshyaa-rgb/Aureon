@@ -1,5 +1,6 @@
 """Local commerce workflow services with validated state transitions."""
 import json,math,re
+from datetime import datetime,timedelta,timezone
 from .db import connect,json_dump
 SCHEMA="""CREATE TABLE IF NOT EXISTS workspace_records (
  id INTEGER PRIMARY KEY AUTOINCREMENT,kind TEXT NOT NULL,status TEXT NOT NULL,title TEXT NOT NULL,
@@ -71,16 +72,34 @@ def request_approval(path,action,target_type,target_id,reason,amount=None,curren
  if not isinstance(target_type,str) or not target_type.strip() or not isinstance(target_id,(str,int)) or not str(target_id).strip() or not isinstance(reason,str) or not reason.strip(): raise ValueError("target_type, target_id and reason are required")
  if amount is not None and (isinstance(amount,bool) or not isinstance(amount,(int,float)) or not math.isfinite(amount) or amount<0): raise ValueError("amount must be finite and non-negative")
  if amount is not None and (not isinstance(currency,str) or not re.fullmatch(r"[A-Za-z]{3}",currency)): raise ValueError("currency is required for amount")
+ expires_at=(datetime.now(timezone.utc)+timedelta(hours=24)).isoformat()
  with connect(path) as conn:
-  cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason) VALUES(?,?,?,?,?,?)",(action,target_type.strip(),str(target_id),amount,currency.upper() if currency else None,reason.strip()[:1000]))
-  return dict(conn.execute("SELECT * FROM approvals WHERE id=?",(cur.lastrowid,)).fetchone())
+  cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason,expires_at) VALUES(?,?,?,?,?,?,?)",(action,target_type.strip(),str(target_id),amount,currency.upper() if currency else None,reason.strip()[:1000],expires_at))
+  approval=dict(conn.execute("SELECT * FROM approvals WHERE id=?",(cur.lastrowid,)).fetchone())
+  conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",("approval.requested","approval",str(approval["id"]),json_dump({"action":action,"target_type":target_type.strip(),"target_id":str(target_id),"expires_at":expires_at})))
+  return approval
 def decide_approval(path,approval_id,decision):
  if decision not in {"approved","rejected"}: raise ValueError("decision must be approved or rejected")
+ expired=False
+ result=None
  with connect(path) as conn:
   conn.execute("BEGIN IMMEDIATE")
-  cur=conn.execute("UPDATE approvals SET status=?,decided_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status='pending'",(decision,approval_id))
-  if cur.rowcount!=1: raise ValueError("approval not found or already decided")
-  return dict(conn.execute("SELECT * FROM approvals WHERE id=?",(approval_id,)).fetchone())
+  row=conn.execute("SELECT * FROM approvals WHERE id=?",(approval_id,)).fetchone()
+  if row is None or row["status"]!="pending": raise ValueError("approval not found or already decided")
+  expiry=row["expires_at"]
+  if expiry:
+   parsed=datetime.fromisoformat(expiry.replace("Z","+00:00"))
+   if parsed.tzinfo is None: raise ValueError("approval expiry must include a timezone")
+   expired=parsed.astimezone(timezone.utc)<=datetime.now(timezone.utc)
+  if expired:
+   conn.execute("UPDATE approvals SET status='expired',decided_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status='pending'",(approval_id,))
+   conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",("approval.expired","approval",str(approval_id),json_dump({"action":row["action"]})))
+  else:
+   conn.execute("UPDATE approvals SET status=?,decided_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status='pending'",(decision,approval_id))
+   conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",("approval.decided","approval",str(approval_id),json_dump({"action":row["action"],"decision":decision})))
+   result=dict(conn.execute("SELECT * FROM approvals WHERE id=?",(approval_id,)).fetchone())
+ if expired: raise ValueError("approval has expired and cannot be used")
+ return result
 def list_approvals(path):
  with connect(path) as conn:return [dict(r) for r in conn.execute("SELECT * FROM approvals ORDER BY id DESC LIMIT 100").fetchall()]
 def add_finance_entry(path,entry_type,amount,currency,description,reference=None,actual=False):
