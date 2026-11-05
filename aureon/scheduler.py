@@ -2,7 +2,7 @@
 import json
 from datetime import datetime,timezone
 from .db import connect,json_dump
-WORKER_KINDS={"design.brief","listing.draft","support.triage","marketing.draft","economics.calculate","economics.compare","opportunity.assess","campaign.metrics","product.create"}
+WORKER_KINDS={"design.brief","listing.draft","support.triage","marketing.draft","economics.calculate","economics.compare","opportunity.assess","campaign.metrics","product.create","trends.collect"}
 SCHEMA="""CREATE TABLE IF NOT EXISTS scheduled_jobs(
  id INTEGER PRIMARY KEY AUTOINCREMENT,kind TEXT NOT NULL,payload_json TEXT NOT NULL,
  run_at TEXT NOT NULL,idempotency_key TEXT UNIQUE,status TEXT NOT NULL DEFAULT 'scheduled',
