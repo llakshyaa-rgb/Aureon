@@ -2,7 +2,6 @@
 import math
 from datetime import datetime, timezone
 from urllib.parse import urlparse
-from .intelligence.scoring import score_opportunity
 
 
 def _number(value, label, minimum=0, maximum=100000000):
