@@ -96,3 +96,67 @@ def prepare_order_from_best_quote(db_path, product_title, quantity, product_type
     return {"order": order, "selected_quote": best,
             "approval_required_before_supplier_submission": True,
             "warning": comparison["warning"]}
+
+
+def record_supplier_performance(db_path, supplier_id, metrics):
+    if not isinstance(metrics, dict):
+        raise ValueError("metrics must be an object")
+    required = ("orders_sample", "on_time_rate", "defect_rate", "response_hours", "dispute_rate")
+    if any(key not in metrics for key in required):
+        raise ValueError("supplier performance metrics are incomplete")
+    sample = metrics["orders_sample"]
+    if isinstance(sample, bool) or not isinstance(sample, int) or not 1 <= sample <= 100000:
+        raise ValueError("orders_sample must be 1..100000")
+    clean = {}
+    for key in ("on_time_rate", "defect_rate", "dispute_rate"):
+        value = metrics[key]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 100:
+            raise ValueError(key + " must be between 0 and 100")
+        clean[key] = round(float(value), 2)
+    response = metrics["response_hours"]
+    if isinstance(response, bool) or not isinstance(response, (int, float)) or not math.isfinite(response) or not 0 <= response <= 720:
+        raise ValueError("response_hours must be between 0 and 720")
+    clean["response_hours"] = round(float(response), 2)
+    clean["orders_sample"] = sample
+    clean["observed_at"] = datetime.now(timezone.utc).isoformat()
+    clean["notes"] = str(metrics.get("notes", ""))[:500]
+    with connect(db_path) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT * FROM workspace_records WHERE id=? AND kind='supplier'", (supplier_id,)).fetchone()
+        if row is None:
+            raise ValueError("supplier not found")
+        data = json.loads(row["data_json"])
+        data.setdefault("performance_observations", []).append(clean)
+        conn.execute("UPDATE workspace_records SET data_json=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
+                     (json_dump(data), supplier_id))
+        conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
+                     ("supplier.performance.recorded", "supplier", str(supplier_id),
+                      json_dump({"orders_sample": sample, "observed_at": clean["observed_at"]})))
+    return supplier_scorecard(db_path, supplier_id)
+
+
+def supplier_scorecard(db_path, supplier_id):
+    with connect(db_path) as conn:
+        row = conn.execute("SELECT * FROM workspace_records WHERE id=? AND kind='supplier'", (supplier_id,)).fetchone()
+    if row is None:
+        raise ValueError("supplier not found")
+    data = json.loads(row["data_json"])
+    observations = data.get("performance_observations", [])
+    if not observations:
+        return {"supplier_id": supplier_id, "supplier": row["title"], "score": None,
+                "confidence": "no_observations", "sample_size": 0,
+                "warning": "No supplier performance data has been recorded."}
+    latest = observations[-1]
+    punctuality = latest["on_time_rate"]
+    quality = 100 - latest["defect_rate"]
+    responsiveness = 100 * (1 - latest["response_hours"] / 720)
+    dispute_safety = 100 - latest["dispute_rate"]
+    score = round(punctuality * .4 + quality * .3 + responsiveness * .15 + dispute_safety * .15, 1)
+    sample = latest["orders_sample"]
+    confidence = "low" if sample < 10 else "medium" if sample < 50 else "higher"
+    return {"supplier_id": supplier_id, "supplier": row["title"], "score": score,
+            "components": {"on_time": punctuality, "quality": quality,
+                           "responsiveness": round(responsiveness, 1), "dispute_safety": dispute_safety},
+            "sample_size": sample, "confidence": confidence, "observed_at": latest["observed_at"],
+            "notes": latest.get("notes", ""),
+            "warning": "Operator-entered supplier performance; not independently verified. Score is a heuristic, not a guarantee."}
