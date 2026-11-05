@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from aureon.db import initialize
 from aureon.workflows import initialize_workspace, add_finance_entry
-from aureon.creative import generate_vector_artwork, validate_svg_artwork, create_asset, list_assets, create_collection
+from aureon.creative import generate_vector_artwork, generate_mockup_preview, validate_svg_artwork, create_asset, list_assets, create_collection
 from aureon.intelligence.product_research import analyze_competition
 from aureon.intelligence.economics import Offer
 from aureon.intelligence.scenarios import pricing_scenarios, break_even_orders
@@ -29,6 +29,9 @@ class ExtendedCapabilityTests(unittest.TestCase):
         self.assertTrue(art["qa"]["passed"])
         self.assertIn("<svg", art["svg"])
         self.assertTrue(validate_svg_artwork(art["svg"])["passed"])
+        mockup = generate_mockup_preview(art)
+        self.assertEqual(mockup["kind"], "illustrative_flat_mockup")
+        self.assertIn("<svg", mockup["svg"])
         with self.assertRaises(ValueError):
             generate_vector_artwork("Bad", "Unsafe", accent="url(javascript:alert(1))")
         with self.assertRaises(ValueError):
