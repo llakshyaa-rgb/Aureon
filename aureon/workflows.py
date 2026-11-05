@@ -31,7 +31,9 @@ TRANSITIONS={
 "supplier":{"research":{"verified","rejected"},"verified":{"research","rejected"},"rejected":{"research"}},
 "customer":{"active":{"restricted"},"restricted":{"active"}}}
 def initialize_workspace(path):
- with connect(path) as conn: conn.executescript(SCHEMA)
+ with connect(path) as conn:
+  conn.executescript(SCHEMA)
+  conn.execute("UPDATE approvals SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+24 hours') WHERE status='pending' AND expires_at IS NULL")
 def _record(row):
  item=dict(row);item["data"]=json.loads(item.pop("data_json"));return item
 def create_record(path,kind,title,data=None,status=None):
