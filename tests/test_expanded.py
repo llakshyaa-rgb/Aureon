@@ -3,7 +3,7 @@ from pathlib import Path
 from aureon.db import initialize
 from aureon.workflows import initialize_workspace,request_approval,decide_approval,create_record,transition_record,add_finance_entry
 from aureon.research import assess_opportunity,save_opportunity
-from aureon.suppliers import add_supplier,add_quote,compare_supplier_quotes,prepare_order_from_best_quote
+from aureon.suppliers import add_supplier,add_quote,compare_supplier_quotes,prepare_order_from_best_quote,record_supplier_performance,supplier_scorecard
 from aureon.operations import create_order,request_supplier_order_approval,record_supplier_submission,update_tracking
 from aureon.analytics import campaign_metrics,record_campaign_metrics
 from aureon.scheduler import initialize_scheduler,schedule_job,enqueue_due
@@ -31,6 +31,15 @@ class ExpandedCommerceTests(unittest.TestCase):
   r=compare_supplier_quotes(self.db,"desk mat","US","USD")
   self.assertEqual(r["best_quote"]["landed_cost"],11);self.assertEqual(len(r["quotes"]),1)
   with self.assertRaises(ValueError):add_quote(self.db,s["id"],{"product_cost":float("nan"),"shipping_cost":0,"currency":"USD","destination":"US","quoted_at":"2026-11-03T10:00:00Z"})
+ def test_supplier_performance_scorecard_is_transparent_and_sample_aware(self):
+  supplier=add_supplier(self.db,"Supplier score","manual","desk mat")
+  empty=supplier_scorecard(self.db,supplier["id"])
+  self.assertEqual(empty["confidence"],"no_observations")
+  result=record_supplier_performance(self.db,supplier["id"],{"orders_sample":25,"on_time_rate":96,"defect_rate":2,"response_hours":24,"dispute_rate":1})
+  self.assertEqual(result["confidence"],"medium")
+  self.assertGreater(result["score"],90)
+  with self.assertRaises(ValueError):
+   record_supplier_performance(self.db,supplier["id"],{"orders_sample":0,"on_time_rate":100,"defect_rate":0,"response_hours":1,"dispute_rate":0})
  def test_best_quote_prepares_itemized_order_and_requires_approval(self):
   supplier=add_supplier(self.db,"Supplier A","manual","desk mat")
   add_quote(self.db,supplier["id"],{"product_cost":8,"shipping_cost":3,"currency":"USD","destination":"US","quoted_at":"2026-11-05T10:00:00+00:00"})
