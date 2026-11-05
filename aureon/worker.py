@@ -86,7 +86,7 @@ def run_once(db_path):
   result=process_job(job,db_path);finish(db_path,job["id"],result)
   return {"id":job["id"],"status":"succeeded","result":result}
  except Exception as exc:
-  retryable=isinstance(exc,RuntimeError) and job["attempts"]<job["max_attempts"]
+  retryable=job["kind"]!="agent.run" and isinstance(exc,RuntimeError) and job["attempts"]<job["max_attempts"]
   fail(db_path,job["id"],str(exc),retry=retryable)
   return {"id":job["id"],"status":"retrying" if retryable else "failed","error":str(exc)}
 def run_until_empty(db_path,max_jobs=100):
