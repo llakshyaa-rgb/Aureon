@@ -19,6 +19,8 @@ def enqueue(path: Path, kind: str, payload=None, idempotency_key=None, max_attem
         raise ValueError("payload must be an object")
     if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or not 1 <= max_attempts <= 10:
         raise ValueError("max_attempts must be an integer between 1 and 10")
+    if kind.strip() == "agent.run":
+        max_attempts = 1
     if idempotency_key is not None and (
         not isinstance(idempotency_key, str) or not idempotency_key.strip() or len(idempotency_key) > 200
     ):
