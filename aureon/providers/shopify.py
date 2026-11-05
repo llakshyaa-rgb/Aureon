@@ -75,13 +75,19 @@ def products(limit=25):
     return (result.get("products") or {}).get("nodes", [])
 
 
-def create_draft_product(title, description="", vendor="", product_type="", tags=None):
+def create_draft_product(title, price, description="", vendor="", product_type="", tags=None):
     title = str(title or "").strip()
     description = str(description or "")
     if not title or len(title) > 255:
         raise ValueError("title is required and must be 255 characters or fewer")
     if len(description) > 5000:
         raise ValueError("description must be 5000 characters or fewer")
+    try:
+        price = round(float(price), 2)
+    except (TypeError, ValueError):
+        raise ValueError("price must be a positive amount") from None
+    if price <= 0:
+        raise ValueError("price must be a positive amount")
     if not isinstance(tags, (list, tuple)):
         tags = []
     clean_tags = [str(tag).strip()[:80] for tag in tags if str(tag).strip()][:20]
@@ -95,7 +101,7 @@ def create_draft_product(title, description="", vendor="", product_type="", tags
     }
     result = graphql(
         "mutation AureonCreateDraft($product: ProductCreateInput!) { "
-        "productCreate(product: $product) { product { id title handle status } "
+        "productCreate(product: $product) { product { id title handle status variants(first: 1) { nodes { id } } } "
         "userErrors { field message } } }",
         {"product": product})
     response = result.get("productCreate") or {}
@@ -106,4 +112,18 @@ def create_draft_product(title, description="", vendor="", product_type="", tags
     created = response.get("product")
     if not created:
         raise RuntimeError("Shopify did not confirm draft creation.")
+    variants = (created.get("variants") or {}).get("nodes") or []
+    if not variants:
+        raise RuntimeError("Shopify created the draft but returned no initial variant.")
+    priced = graphql(
+        "mutation AureonSetDraftPrice($productId: ID!, $variants: [ProductVariantsBulkInput!]!) { "
+        "productVariantsBulkUpdate(productId: $productId, variants: $variants) { "
+        "productVariants { id price } userErrors { field message } } }",
+        {"productId": created["id"], "variants": [{"id": variants[0]["id"], "price": f"{price:.2f}"}]})
+    price_result = priced.get("productVariantsBulkUpdate") or {}
+    price_errors = price_result.get("userErrors") or []
+    if price_errors:
+        raise RuntimeError("Shopify draft exists but price update failed: " + "; ".join(
+            str(x.get("message", "price update error")) for x in price_errors[:4]))
+    created["variant_price"] = price_result.get("productVariants", [{}])[0].get("price")
     return created
