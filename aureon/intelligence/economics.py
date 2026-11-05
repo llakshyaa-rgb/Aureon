@@ -16,11 +16,11 @@ class Offer:
     payment_fixed_fee: float = 0.0
     estimated_ad_cost: float = 0.0
     other_costs: float = 0.0
+    currency: str = "USD"
     duty_cost: float = 0.0
     tax_rate: float = 0.0
     return_rate: float = 0.0
     chargeback_rate: float = 0.0
-    currency: str = "USD"
 
     def validate(self):
         if not isinstance(self.channel, str) or not self.channel.strip():
