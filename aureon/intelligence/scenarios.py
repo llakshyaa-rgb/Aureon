@@ -20,7 +20,7 @@ def pricing_scenarios(offer, prices=None, target_margin=0.25):
             raise ValueError("each scenario price must be positive and finite")
         result = calculate_unit_economics(replace(offer, selling_price=float(price)))
         scenarios.append(result)
-    fixed_cost = offer.product_cost + offer.shipping_cost + offer.packaging_cost + offer.duty_cost + offer.payment_fixed_fee + offer.other_costs
+    fixed_cost = offer.product_cost + offer.shipping_cost + offer.packaging_cost + offer.duty_cost + offer.payment_fixed_fee + offer.estimated_ad_cost + offer.other_costs
     variable_rate = offer.platform_fee_rate + offer.payment_fee_rate + offer.tax_rate + offer.return_rate + offer.chargeback_rate
     denominator = 1 - variable_rate - target_margin
     target_price = round(fixed_cost / denominator, 2) if denominator > 0 else None
