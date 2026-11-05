@@ -1,5 +1,6 @@
 """Order lifecycle simulator; matching approval is mandatory before submission."""
 import json,math,re
+from datetime import datetime,timedelta,timezone
 from .workflows import create_record
 from .db import connect,json_dump
 
@@ -30,8 +31,9 @@ def request_supplier_order_approval(db_path,order_id,reason="Review supplier ord
         if order["status"] not in {"simulated","awaiting_approval"}: raise ValueError("order is not awaiting supplier approval")
         pending=conn.execute("SELECT id FROM approvals WHERE action='place_supplier_order' AND target_type='order' AND target_id=? AND status='pending'",(str(order_id),)).fetchone()
         if pending: raise ValueError("this order already has a pending approval")
-        cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason) VALUES(?,?,?,?,?,?)",
-          ("place_supplier_order","order",str(order_id),order["data"]["total_supplier_cost"],order["data"]["currency"],reason.strip()[:1000]))
+        expires_at=(datetime.now(timezone.utc)+timedelta(hours=24)).isoformat()
+        cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason,expires_at) VALUES(?,?,?,?,?,?,?)",
+          ("place_supplier_order","order",str(order_id),order["data"]["total_supplier_cost"],order["data"]["currency"],reason.strip()[:1000],expires_at))
         approval=dict(conn.execute("SELECT * FROM approvals WHERE id=?",(cur.lastrowid,)).fetchone())
         conn.execute("UPDATE workspace_records SET status='awaiting_approval',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",(order_id,))
         conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
@@ -89,6 +91,7 @@ def request_refund_review(db_path,order_id,amount,reason):
         if order["status"] not in {"approved","fulfilled","cancelled"} or order["data"].get("supplier_order_status")!="submitted": raise ValueError("only submitted orders can be reviewed for refund")
         if amount>order["data"]["total_supplier_cost"]: raise ValueError("refund exceeds recorded supplier cost")
         if conn.execute("SELECT 1 FROM approvals WHERE action=? AND target_type=? AND target_id=? AND status=?",( "issue_refund","order",str(order_id),"pending")).fetchone(): raise ValueError("a refund review is already pending for this order")
-        cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason) VALUES(?,?,?,?,?,?)",
-          ("issue_refund","order",str(order_id),amount,order["data"]["currency"],reason.strip()[:1000]))
+        expires_at=(datetime.now(timezone.utc)+timedelta(hours=24)).isoformat()
+        cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason,expires_at) VALUES(?,?,?,?,?,?,?)",
+          ("issue_refund","order",str(order_id),amount,order["data"]["currency"],reason.strip()[:1000],expires_at))
         return dict(conn.execute("SELECT * FROM approvals WHERE id=?",(cur.lastrowid,)).fetchone())
