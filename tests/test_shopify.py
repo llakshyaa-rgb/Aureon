@@ -67,8 +67,9 @@ class ShopifyProviderTests(unittest.TestCase):
             "AUREON_SHOPIFY_STORE": "not a domain",
             "AUREON_SHOPIFY_ACCESS_TOKEN": "test-token",
         }):
-            with self.assertRaises(ValueError):
-                shopify.health()
+            health = shopify.health()
+            self.assertEqual(health["mode"], "configuration_error")
+            self.assertFalse(health["configured"])
 
 
 if __name__ == "__main__":
