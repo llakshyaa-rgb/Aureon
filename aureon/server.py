@@ -28,6 +28,8 @@ def _shopify_draft_payload(body):
  description=str(body.get("description") or "")
  vendor=str(body.get("vendor") or "")[:255]
  product_type=str(body.get("product_type") or "")[:255]
+ if not title or len(title)>255: raise ValueError("title is required and must be 255 characters or fewer")
+ if len(description)>5000: raise ValueError("description must be 5000 characters or fewer")
  raw_tags=body.get("tags",[])
  tags=[str(tag).strip()[:80] for tag in raw_tags if str(tag).strip()][:20] if isinstance(raw_tags,list) else []
  return {"title":title,"description":description,"vendor":vendor,"product_type":product_type,"tags":tags}
