@@ -64,6 +64,13 @@ class ExtendedCapabilityTests(unittest.TestCase):
         result = pricing_scenarios(offer, [20, 30, 40], .25)
         self.assertEqual(len(result["scenarios"]), 3)
         self.assertGreater(result["target_price"], 0)
+        taxed = Offer("POD", 100, 20, duty_cost=5, tax_rate=.1, return_rate=.05, chargeback_rate=.01)
+        priced = pricing_scenarios(taxed, [100], .2)["scenarios"][0]
+        self.assertEqual(priced["estimated_tax"], 10)
+        self.assertEqual(priced["return_reserve"], 5)
+        self.assertEqual(priced["chargeback_reserve"], 1)
+        with self.assertRaises(ValueError):
+            Offer("POD", 100, 20, tax_rate=1.5).validate()
         self.assertEqual(break_even_orders(100, 25)["orders"], 4)
         with self.assertRaises(ValueError):
             break_even_orders(100, 0)
