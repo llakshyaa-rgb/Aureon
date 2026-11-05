@@ -8,6 +8,7 @@ from aureon.intelligence.product_research import analyze_competition
 from aureon.intelligence.economics import Offer
 from aureon.intelligence.scenarios import pricing_scenarios, break_even_orders
 from aureon.finance_reports import profit_and_loss
+from aureon.intelligence.evaluation import evaluate_product_opportunity
 from aureon.agents import plan_run, submit_plan
 from aureon.jobs import list_jobs
 from aureon.worker import run_once
@@ -65,6 +66,18 @@ class ExtendedCapabilityTests(unittest.TestCase):
                 {"url":"https://shop.example/a","price":20,"currency":"USD","collected_at":"2026-11-05T10:00:00Z"},
                 {"url":"https://shop.example/b","price":30,"currency":"INR","collected_at":"2026-11-05T10:00:00Z"},
             ])
+
+    def test_integrated_opportunity_evaluation_combines_evidence_competition_and_margin(self):
+        result = evaluate_product_opportunity(self.db, "Planet desk mat",
+            [{"source_url":"https://research.example/report","collected_at":"2026-11-05T10:00:00Z","observation":"Rising niche interest"}],
+            {"demand":90,"trend":90,"shipping":90,"confidence":90},
+            [{"url":"https://shop.example/a","price":25,"currency":"USD","reviews":100,"collected_at":"2026-11-05T10:00:00Z"},
+             {"url":"https://shop.example/b","price":30,"currency":"USD","reviews":50,"collected_at":"2026-11-05T10:00:00Z"}],
+            {"channel":"POD","selling_price":100,"product_cost":20,"shipping_cost":5,
+             "platform_fee_rate":.05,"payment_fee_rate":.03,"currency":"USD"})
+        self.assertEqual(result["decision"], "shortlist_for_human_review")
+        self.assertEqual(result["record"]["kind"], "opportunity")
+        self.assertIn("unit_economics", result["record"]["data"])
 
     def test_pricing_scenarios_and_break_even(self):
         offer = Offer("POD", 30, 10, shipping_cost=4, platform_fee_rate=.05, payment_fee_rate=.03, currency="USD")
