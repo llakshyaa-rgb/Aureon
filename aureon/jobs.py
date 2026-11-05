@@ -17,11 +17,7 @@ def enqueue(path: Path, kind: str, payload=None, idempotency_key=None, max_attem
         raise ValueError("kind must be a non-empty string of at most 100 characters")
     if payload is not None and not isinstance(payload, dict):
         raise ValueError("payload must be an object")
-    try:
-        max_attempts = int(max_attempts)
-    except (TypeError, ValueError):
-        raise ValueError("max_attempts must be an integer between 1 and 10") from None
-    if isinstance(max_attempts, bool) or not 1 <= max_attempts <= 10:
+    if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or not 1 <= max_attempts <= 10:
         raise ValueError("max_attempts must be an integer between 1 and 10")
     if idempotency_key is not None and (
         not isinstance(idempotency_key, str) or not idempotency_key.strip() or len(idempotency_key) > 200
