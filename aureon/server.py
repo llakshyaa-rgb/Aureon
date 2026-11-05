@@ -97,6 +97,9 @@ def make_handler(db_path):
    path=urlparse(self.path).path
    try:
     b=self._body()
+    if path=="/api/shopify/drafts":
+     product=shopify.create_draft_product(b.get("title"),b.get("description",""),b.get("vendor",""),b.get("product_type",""),b.get("tags",[]))
+     return self._send(201,{"product":product,"published":False,"provider":"Shopify"})
     if path=="/api/jobs": return self._send(201,{"job":enqueue(db_path,str(b.get("kind","")),b.get("payload",{}),b.get("idempotency_key"))})
     if path=="/api/records": return self._send(201,{"record":create_record(db_path,b.get("kind"),b.get("title"),b.get("data",{}),b.get("status"))})
     if path=="/api/opportunities/assess": return self._send(201,save_opportunity(db_path,b.get("title"),b.get("evidence"),b.get("signals"),b.get("region","global"),b.get("business_model","undecided")))
