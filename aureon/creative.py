@@ -164,8 +164,8 @@ def create_collection(db_path, title, concept, styles, palette="midnight"):
     concept = _text(concept, "collection concept", 240)
     if not isinstance(styles, list) or not 1 <= len(styles) <= 5:
         raise ValueError("collection must contain 1-5 styles")
-    if len(set(styles)) != len(styles):
-        raise ValueError("collection styles must be unique")
+    if any(not isinstance(style, str) for style in styles) or len(set(styles)) != len(styles):
+        raise ValueError("collection styles must be unique text values")
     variants = []
     for index, style in enumerate(styles, 1):
         asset = create_asset(db_path, title=title + " · " + str(index), concept=concept,
