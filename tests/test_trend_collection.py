@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 from aureon.db import initialize
 from aureon.workflows import initialize_workspace, list_records
-from aureon.trends import collect_trends
+from aureon.trends import collect_trends, trend_history
 
 
 class TrendCollectionTests(unittest.TestCase):
@@ -39,6 +39,9 @@ class TrendCollectionTests(unittest.TestCase):
         rows = list_records(self.db, "opportunity")
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["data"]["trend_geo"], "IN")
+        history = trend_history(self.db, "IN")
+        self.assertEqual(history["snapshot_count"], 2)
+        self.assertEqual(history["rank_movement"]["Example search"]["direction"], "steady")
 
 
 if __name__ == "__main__":
