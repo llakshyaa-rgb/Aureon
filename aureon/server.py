@@ -1,5 +1,6 @@
 """Local-only HTTP control plane."""
 import json
+import threading
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import urlparse,parse_qs
 from . import __version__
@@ -19,6 +20,7 @@ from .agents import submit_plan,runtime_status
 from .command_center import dashboard_snapshot,interpret_command
 from .trends import fetch_trending_searches
 from .providers import shopify, printify
+from .worker import background_loop
 PAGE="""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aureon</title>
 <style>:root{color-scheme:dark;font-family:system-ui;background:#0b1020;color:#e8edf7}body{max-width:1000px;margin:28px auto;padding:0 16px}
 header,.grid{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}h1{letter-spacing:-1px}.muted,small{color:#9aa8bd}
@@ -177,6 +179,10 @@ def serve(host,port,db_path):
  recovered=recover_interrupted(db_path)
  if recovered["requeued"] or recovered["failed"]: print("Recovered interrupted jobs:",recovered)
  server=ThreadingHTTPServer((host,port),make_handler(db_path))
- print("Aureon: http://%s:%s (local workspace; Ctrl+C to stop)"%(host,port))
+ stop_event=threading.Event()
+ worker=threading.Thread(target=background_loop,args=(db_path,stop_event),name="aureon-worker",daemon=True)
+ worker.start()
+ print("Aureon: http://%s:%s (local workspace + background worker; Ctrl+C to stop)"%(host,port))
  try: server.serve_forever()
- finally: server.server_close()
+ finally:
+  stop_event.set();worker.join(timeout=5);server.server_close()
