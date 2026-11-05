@@ -45,6 +45,7 @@ def compare_supplier_quotes(db_path,product_type,destination,currency):
  now=datetime.now(timezone.utc);candidates=[]
  for supplier in list_records(db_path,"supplier",250):
   if supplier["data"].get("product_type","").casefold()!=product_type.strip().casefold():continue
+  scorecard=supplier_scorecard(db_path,supplier["id"])
   for q in supplier["data"].get("quotes",[]):
    if q["destination"].casefold()!=destination.strip().casefold() or q["currency"]!=currency.upper():continue
    quoted=datetime.fromisoformat(q["quoted_at"].replace("Z","+00:00")).astimezone(timezone.utc)
@@ -52,10 +53,11 @@ def compare_supplier_quotes(db_path,product_type,destination,currency):
    freshness="fresh" if age_days<=7 else "aging" if age_days<=30 else "stale"
    candidates.append({"supplier_id":supplier["id"],"supplier":supplier["title"],"provider":supplier["data"].get("provider"),
     "landed_cost":round(q["product_cost"]+q["shipping_cost"],2),"currency":currency.upper(),"quoted_at":q["quoted_at"],
-    "age_days":round(age_days,1),"freshness":freshness,"status":q.get("status","unverified"),"quote":q})
+    "age_days":round(age_days,1),"freshness":freshness,"status":q.get("status","unverified"),
+    "reliability_score":scorecard["score"],"reliability_confidence":scorecard["confidence"],"quote":q})
  candidates.sort(key=lambda x:(x["landed_cost"],x["age_days"]))
  return {"quotes":candidates,"best_quote":candidates[0] if candidates else None,
- "warning":"Quotes are user-supplied and unverified. Freshness is based on quote timestamp, not supplier confirmation. Confirm stock, quality, shipping, duties, taxes and current price."}
+ "warning":"Quotes and reliability observations are operator-supplied and unverified. Freshness is based on quote timestamp, not supplier confirmation. Confirm stock, quality, shipping, duties, taxes and current price."}
 
 
 def prepare_order_from_best_quote(db_path, product_title, quantity, product_type, destination, currency):
