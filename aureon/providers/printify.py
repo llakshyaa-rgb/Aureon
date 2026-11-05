@@ -157,7 +157,7 @@ def validate_product(shop_id, product):
         if not isinstance(variant.get("is_enabled"), bool):
             raise ValueError("each variant requires is_enabled")
         variant_ids.append(int(variant_id))
-        normalized_variants.append({**variant, "id": int(variant_id)})
+        normalized_variants.append({"id": int(variant_id), "price": price, "is_enabled": variant["is_enabled"]})
     areas = product.get("print_areas")
     if not isinstance(areas, list) or not areas:
         raise ValueError("at least one print area is required")
