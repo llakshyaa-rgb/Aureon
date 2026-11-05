@@ -31,6 +31,10 @@ class ExtendedCapabilityTests(unittest.TestCase):
         self.assertTrue(validate_svg_artwork(art["svg"])["passed"])
         with self.assertRaises(ValueError):
             generate_vector_artwork("Bad", "Unsafe", accent="url(javascript:alert(1))")
+        with self.assertRaises(ValueError):
+            validate_svg_artwork('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"></svg>')
+        with self.assertRaises(ValueError):
+            validate_svg_artwork('<svg xmlns="http://www.w3.org/2000/svg"><image href="https://bad.example/x"/></svg>')
 
     def test_artwork_asset_persists_and_can_be_listed(self):
         result = create_asset(self.db, title="Night Garden", concept="Leaves under stars",
