@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from aureon.db import initialize
 from aureon.workflows import initialize_workspace, create_record, list_records
-from aureon.backups import backup_database, list_backups, restore_backup
+from aureon.backups import backup_database, backup_if_due, list_backups, restore_backup
 
 
 class BackupTests(unittest.TestCase):
@@ -33,6 +33,12 @@ class BackupTests(unittest.TestCase):
         for _ in range(3):
             backup_database(self.db, self.backup_dir, retain=2)
         self.assertEqual(len(list_backups(self.db, self.backup_dir)), 2)
+
+    def test_daily_backup_guard_avoids_duplicate_startup_snapshots(self):
+        first = backup_if_due(self.db, self.backup_dir)
+        second = backup_if_due(self.db, self.backup_dir)
+        self.assertTrue(first["created"])
+        self.assertFalse(second["created"])
 
     def test_invalid_backup_options_rejected(self):
         with self.assertRaises(ValueError):
