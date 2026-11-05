@@ -21,7 +21,7 @@ An approval identifies the exact action, target, amount and currency where relev
 - Retry transient worker errors only, with a bounded attempt count. The local background worker polls between attempts; the synchronous drain command may retry immediately.
 - Treat a timeout after a write as ambiguous; reconcile before repeating.
 - Record every state transition and external provider reference.
-- Recover interrupted jobs at startup.
+- Recover interrupted jobs at startup; fail interrupted multi-step agent plans closed rather than replaying completed steps.
 - Escalate repeated or ambiguous failures rather than looping.
 
 ## Autonomy levels
