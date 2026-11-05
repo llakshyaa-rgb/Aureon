@@ -18,7 +18,7 @@ An approval identifies the exact action, target account/provider, item/order, am
 - Persist job state before external side effects.
 - Use stable job IDs and idempotency keys.
 - Use provider idempotency or reconcile state before retrying a write.
-- Retry only transient errors, with bounded attempts and backoff.
+- Retry transient worker errors only, with a bounded attempt count. The local background worker polls between attempts; the synchronous drain command may retry immediately.
 - Treat a timeout after a write as ambiguous; reconcile before repeating.
 - Record every state transition and external provider reference.
 - Recover interrupted jobs at startup.
