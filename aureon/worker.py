@@ -4,6 +4,7 @@ from .commerce import build_design_brief,generate_listing_draft,draft_marketing_
 from .creative import create_asset,generate_vector_artwork
 from .intelligence.product_research import analyze_competition
 from .intelligence.scenarios import pricing_scenarios
+from .intelligence.evaluation import evaluate_product_opportunity
 from .intelligence.economics import Offer,calculate_unit_economics,compare_channels
 from .research import save_opportunity
 from .analytics import campaign_metrics,record_campaign_metrics
@@ -17,6 +18,9 @@ def process_job(job,db_path=None):
  elif kind=="creative.generate":
   result=create_asset(db_path,**payload) if db_path is not None else generate_vector_artwork(**payload)
  elif kind=="research.competitors":result=analyze_competition(payload["observations"])
+ elif kind=="opportunity.evaluate":
+  if db_path is None:raise ValueError("database path required")
+  result=evaluate_product_opportunity(db_path,**payload)
  elif kind=="economics.scenarios":
   result=pricing_scenarios(Offer(**payload["offer"]),payload.get("prices"),payload.get("target_margin",0.25))
  elif kind=="listing.draft":
