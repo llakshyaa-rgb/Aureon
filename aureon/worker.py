@@ -5,6 +5,7 @@ from .intelligence.economics import Offer,calculate_unit_economics,compare_chann
 from .research import save_opportunity
 from .analytics import campaign_metrics,record_campaign_metrics
 from .workflows import create_record,initialize_workspace
+from .trends import collect_trends
 def process_job(job,db_path=None):
  payload=job["payload"];kind=job["kind"]
  if kind=="design.brief":
@@ -27,6 +28,9 @@ def process_job(job,db_path=None):
  elif kind=="campaign.metrics":
   if db_path is not None and "campaign_id" in payload:result=record_campaign_metrics(db_path,payload["campaign_id"],payload["metrics"])
   else:result=campaign_metrics(payload.get("metrics",payload))
+ elif kind=="trends.collect":
+  if db_path is None:raise ValueError("database path required")
+  result=collect_trends(db_path,payload.get("geo","IN"),payload.get("limit",25))
  elif kind=="product.create":
   if db_path is None:raise ValueError("database path required")
   result=create_record(db_path,"product",payload["title"],payload.get("data",{}),"draft")
