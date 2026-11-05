@@ -33,17 +33,24 @@ class ShopifyProviderTests(unittest.TestCase):
             shopify.products(0)
 
     def test_draft_creation_sends_draft_status(self):
-        with patch.object(shopify, "graphql", return_value={
-            "productCreate": {"product": {
-                "id": "gid://shopify/Product/1", "title": "Test", "status": "DRAFT"
-            }, "userErrors": []}
-        }) as call:
+        with patch.object(shopify, "graphql", side_effect=[
+            {"productCreate": {"product": {
+                "id": "gid://shopify/Product/1", "title": "Test", "status": "DRAFT",
+                "variants": {"nodes": [{"id": "gid://shopify/ProductVariant/1"}]}
+            }, "userErrors": []}},
+            {"productVariantsBulkUpdate": {
+                "productVariants": [{"id": "gid://shopify/ProductVariant/1", "price": "12.50"}],
+                "userErrors": []
+            }},
+        ]) as call:
             result = shopify.create_draft_product(
-                "Test", "A <safe> description", tags=["one", "two"])
+                "Test", 12.5, "A <safe> description", tags=["one", "two"])
         self.assertEqual(result["status"], "DRAFT")
-        variables = call.call_args.args[1]
+        self.assertEqual(result["variant_price"], "12.50")
+        variables = call.call_args_list[0].args[1]
         self.assertEqual(variables["product"]["status"], "DRAFT")
         self.assertIn("&lt;safe&gt;", variables["product"]["descriptionHtml"])
+        self.assertEqual(call.call_args_list[1].args[1]["variants"][0]["price"], "12.50")
 
     def test_draft_creation_rejects_empty_title(self):
         with self.assertRaises(ValueError):
