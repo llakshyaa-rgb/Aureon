@@ -6,7 +6,7 @@ This document distinguishes implemented local workflows, live read-only data acc
 
 - SQLite persistence, event history, durable queue, idempotency, bounded retries and interrupted-job recovery.
 - Product, opportunity, design, listing, supplier, order, support and campaign records.
-- Product economics, POD/dropshipping comparison, manual supplier quote capture and landed-cost comparison.
+- Product economics with estimated tax, duty, return and chargeback reserves; POD/dropshipping comparison; pricing sensitivity and break-even order scenarios.\n- Evidence-backed competitor observation analysis, manual quote comparisons and quote-based itemized simulated purchase-order preparation.\n- Local editable SVG creative studio with five styles, five palettes, saved assets, print-size checks and illustrative flat mockups.\n- Collected Google Trends snapshot history and rank movement across the latest two saved snapshots.\n- Order-aware support response drafts using locally recorded fulfillment status; responses remain unsent.\n- Period-filtered, multi-currency P&L reporting that keeps actual and estimated entries separate.\n- Dependency-aware supervised agent plans with validated earlier-step references and sequential execution.
 - Draft generation for design briefs, listings, marketing and support.
 - Campaign observations and CTR, conversion, CPA and ROAS calculations.
 - Actual-versus-estimated finance ledger, manual reconciliation and scenario cash-flow projections.
@@ -45,10 +45,10 @@ Provider code is committed, but credentials must be configured locally and each 
 - Printify order submission, mockup generation and fulfillment.
 - Shopify product publication, order/inventory synchronization, payment or refund actions.
 - Supplier purchasing, carrier tracking, returns, or actual fulfillment.
-- AI image generation, asset management or print-ready QA.
+- External AI image generation, raster export, production mockups, and provider-specific print-file QA. Local SVG generation and basic size/safe-area checks are implemented.
 - Connected customer inboxes, sending customer replies, social publishing or ad buying.
 - Bank/payment feeds, live tax and FX providers, accounting exports.
-- Dependency-aware multi-agent orchestration, cloud execution, remote access or production hosting.
+- Crash-resumable dependency-aware agent step checkpoints, cloud execution, remote access or production hosting. Agent plans run as single-attempt jobs to avoid replaying already-created local records.
 - Fully autonomous commercial decision-making. External spending, publishing and customer commitments remain human-controlled.
 
 ## Security and operation
@@ -61,7 +61,7 @@ Provider code is committed, but credentials must be configured locally and each 
 
 ## Verification
 
-The repository currently contains 68 unit tests covering the local core, workflows, trend collection, worker retry behavior, Shopify validation and Printify product payload validation. The latest additions have not been run in the target Termux environment. Run:
+The repository includes tests for the local core, workflows, trend collection/history, worker retry behavior, Shopify validation, Printify product payload validation, creative assets, competitor analysis, pricing scenarios, P&L and dependency-aware agent plans. The latest additions have not been run in the target Termux environment. Run:
 
     git pull --ff-only
     python -m unittest discover -s tests -v
