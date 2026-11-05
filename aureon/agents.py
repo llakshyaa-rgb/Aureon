@@ -13,6 +13,7 @@ ALLOWED = {
  "economics.scenarios": {"offer"},
  "opportunity.assess": {"title","evidence","signals"},
  "research.competitors": {"observations"},
+ "opportunity.evaluate": {"title","evidence","signals","observations","offer"},
  "campaign.metrics": {"metrics"},
  "trends.collect": {"geo"},
 }
