@@ -11,7 +11,7 @@ from .jobs import enqueue,list_jobs,recover_interrupted
 from .workflows import (initialize_workspace,create_record,list_records,transition_record,
  request_approval,decide_approval,list_approvals,add_finance_entry,finance_summary)
 from .research import save_opportunity
-from .suppliers import add_supplier,add_quote,compare_supplier_quotes
+from .suppliers import add_supplier,add_quote,compare_supplier_quotes,prepare_order_from_best_quote
 from .operations import create_order,request_supplier_order_approval,record_supplier_submission,update_tracking,request_refund_review
 from .analytics import record_campaign_metrics,summarize_campaigns
 from .scheduler import initialize_scheduler,schedule_job,enqueue_due,list_scheduled
@@ -234,6 +234,8 @@ def make_handler(db_path):
     if path=="/api/suppliers": return self._send(201,{"supplier":add_supplier(db_path,b.get("name"),b.get("provider"),b.get("product_type"),b.get("website"),b.get("notes",""))})
     if path.startswith("/api/suppliers/") and path.endswith("/quotes"):
      sid=int(path.split("/")[3]);return self._send(201,{"quote":add_quote(db_path,sid,b.get("quote",{}))})
+    if path=="/api/orders/prepare-from-quote":
+     return self._send(201,prepare_order_from_best_quote(db_path,b.get("product_title"),b.get("quantity"),b.get("product_type"),b.get("destination"),b.get("currency")))
     if path=="/api/orders": return self._send(201,{"order":create_order(db_path,b.get("product_title"),b.get("quantity"),b.get("unit_cost"),b.get("currency"),b.get("supplier_id"),b.get("customer_reference"))})
     if path.startswith("/api/orders/") and path.endswith("/approval"):
      oid=int(path.split("/")[3]);order,approval=request_supplier_order_approval(db_path,oid,b.get("reason","Review supplier order"));return self._send(201,{"order":order,"approval":approval})
