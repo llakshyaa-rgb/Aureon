@@ -6,14 +6,17 @@ from .jobs import enqueue
 ALLOWED = {
  "design.brief": {"niche","audience","product_type","style","concept"},
  "creative.generate": {"title","concept","style","palette"},
+ "creative.collection": {"title","concept","styles","palette"},
  "listing.draft": {"product","audience","keywords"},
  "support.triage": {"subject","message"},
  "marketing.draft": {"product_title","audience","channel","benefit","call_to_action"},
  "economics.calculate": {"channel","selling_price","product_cost"},
+ "economics.compare": {"pod","dropshipping"},
  "economics.scenarios": {"offer"},
  "opportunity.assess": {"title","evidence","signals"},
  "research.competitors": {"observations"},
  "opportunity.evaluate": {"title","evidence","signals","observations","offer"},
+ "supplier.order.prepare": {"product_title","quantity","product_type","destination","currency"},
  "campaign.metrics": {"metrics"},
  "trends.collect": {"geo"},
 }
