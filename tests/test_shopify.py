@@ -62,6 +62,13 @@ class ShopifyProviderTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     shopify.create_draft_product("Test", price)
 
+    def test_shop_domain_rejects_trailing_hyphen(self):
+        with patch.dict(os.environ, {
+            "AUREON_SHOPIFY_STORE": "bad-.myshopify.com",
+            "AUREON_SHOPIFY_ACCESS_TOKEN": "test-token",
+        }):
+            self.assertEqual(shopify.health()["mode"], "configuration_error")
+
     def test_shop_domain_is_validated(self):
         with patch.dict(os.environ, {
             "AUREON_SHOPIFY_STORE": "not a domain",
