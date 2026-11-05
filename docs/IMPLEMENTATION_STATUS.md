@@ -1,6 +1,6 @@
 # Implementation Status
 
-This document distinguishes implemented local workflows, live read-only provider integrations, and external actions that are not enabled.
+This document distinguishes implemented local workflows, live read-only data access, limited write actions, and external actions that are not enabled.
 
 ## Implemented local workspace
 
@@ -32,7 +32,8 @@ This document distinguishes implemented local workflows, live read-only provider
 ### Printify API
 - Read merchant shops.
 - Read product blueprints, print providers, variants and shipping information.
-- Upload artwork from a public HTTPS URL and create an unpublished product with explicit one-time approval.
+- Upload artwork from a public HTTPS URL and create a product hidden from connected sales channels with explicit one-time approval.
+- Product payload validation checks variant references, print areas, uploaded image IDs and numeric positioning values. The provider request explicitly sets visible=false.
 - Requires shops.read and catalog.read for discovery, uploads.write for artwork upload, and products.write for product creation.
 - Publishing, order submission and fulfillment are not enabled.
 
@@ -56,11 +57,11 @@ Provider code is committed, but credentials must be configured locally and each 
 - .env is ignored by Git and simple AUREON_ key/value entries are loaded locally. Never commit credentials or customer data.
 - Start with development/test stores and minimum required provider scopes.
 - Shopify draft creation is an explicit dashboard action. No publishing action is exposed.
-- Printify integration is read-only.
+- Printify catalog discovery is read-only; artwork upload and hidden product creation are explicit write actions. Publishing and order submission are not enabled.
 
 ## Verification
 
-The repository includes tests for the local core, workflows, live trend input validation, Shopify adapter validation and Printify adapter validation. The latest additions have not been run in the target Termux environment. Run:
+The repository currently contains 62 unit tests covering the local core, workflows, trend collection, worker retry behavior, Shopify validation and Printify product payload validation. The latest additions have not been run in the target Termux environment. Run:
 
     git pull --ff-only
     python -m unittest discover -s tests -v
