@@ -22,12 +22,12 @@ Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C. The dashboard s
 - Persistent product, opportunity, design, listing, supplier, order, support and campaign records.
 - Unit economics and POD/dropshipping comparisons from explicit cost assumptions.
 - Manual supplier quote capture and destination/currency-matched landed-cost comparison.
-- Design, listing, marketing and support drafts.
+- Editable SVG creative studio with five visual styles, five palettes, saved assets and basic print-size/safe-area checks.\n- Competitor observation analysis, pricing sensitivity and break-even scenarios with explicit assumptions.\n- Period-filtered P&L reports, Google Trends rank history and order-aware support response drafts.\n- Quote-based simulated purchase-order preparation with itemized supplier and shipping costs.
 - Simulated order lifecycle with exact amount/currency approval checks. No supplier order is actually placed.
 - Campaign metrics: CTR, conversion, CPA and ROAS.
 - Finance ledger, manual reconciliation and scenario cash-flow projections.
 - Durable jobs, idempotency, retries, interrupted-job recovery and local background processing.
-- Allowlisted agent plans; no shell execution or arbitrary code execution.
+- Dependency-aware, allowlisted agent plans with prior-step output references; no shell execution or arbitrary code execution.
 
 ## Live integrations
 
@@ -50,7 +50,7 @@ A provider token being present only means credentials are configured. Use the da
 - GET /api/printify/blueprints/{id}/providers
 - GET /api/printify/blueprints/{id}/providers/{provider_id}/variants and /shipping
 - POST /api/printify/uploads, POST /api/printify/products/approval, POST /api/printify/products
-- GET /api/overview, GET /api/jobs, GET/POST /api/records, PATCH /api/records/{id}
+- POST /api/creative/generate, GET /api/creative/assets, POST /api/creative/mockup\n- POST /api/research/competitors, POST /api/economics/scenarios, POST /api/economics/break-even\n- GET /api/trends/history, GET /api/finance/profit-and-loss\n- POST /api/orders/prepare-from-quote\n- GET /api/overview, GET /api/jobs, GET/POST /api/records, PATCH /api/records/{id}
 - POST /api/opportunities/assess
 - GET/POST /api/suppliers, POST /api/suppliers/{id}/quotes, GET /api/suppliers/compare
 - POST /api/orders and order approval, simulated submission, tracking and refund-review routes
@@ -58,7 +58,7 @@ A provider token being present only means credentials are configured. Use the da
 - GET/POST /api/schedules, POST /api/schedules/run-due
 - GET/POST /api/approvals, POST /api/approvals/{id}/decision
 - GET/POST /api/finance, GET /api/finance/dashboard, POST /api/finance/reconcile, POST /api/finance/forecast
-- GET/POST /api/support and support response/note routes
+- GET/POST /api/support and support response/note routes, POST /api/support/{id}/contextual-response
 - GET/POST /api/marketing/campaigns
 - GET /api/agents, POST /api/agents/plans
 - GET /api/command-center, POST /api/commands/interpret
