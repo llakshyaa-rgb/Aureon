@@ -14,7 +14,7 @@ def plan_run(name,tasks):
   deps=t.get("depends_on",[])
   if not isinstance(deps,list) or deps:raise ValueError("dependency-gated plans are not enabled yet; submit independent tasks")
   clean.append({"step":i,"kind":t["kind"],"payload":t["payload"],"depends_on":[]})
- return {"name":name.strip(),"tasks":clean,"mode":"supervised_mock","requires_operator_review":True}
+ return {"name":name.strip(),"tasks":clean,"mode":"supervised_local","requires_operator_review":True}
 def submit_plan(db_path,name,tasks,idempotency_key=None):
  plan=plan_run(name,tasks)
  if idempotency_key is not None and (not isinstance(idempotency_key,str) or not idempotency_key.strip() or len(idempotency_key)>180):raise ValueError("idempotency_key must be 1-180 characters")
@@ -29,7 +29,7 @@ def submit_plan(db_path,name,tasks,idempotency_key=None):
   cur=conn.execute("INSERT INTO workspace_records(kind,status,title,data_json) VALUES('agent_run','queued',?,?)",(plan["name"],json_dump({**plan,"idempotency_key":key,"job_ids":ids})))
   run_id=cur.lastrowid
   conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",("agent.run.queued","agent_run",str(run_id),json_dump({"job_ids":ids})))
- return {"run_id":run_id,"job_ids":ids,"duplicate":False,"mode":"supervised_mock"}
+ return {"run_id":run_id,"job_ids":ids,"duplicate":False,"mode":"supervised_local"}
 def runtime_status(db_path):
  with connect(db_path) as conn:
   jobs={r["status"]:r["n"] for r in conn.execute("SELECT status,COUNT(*) n FROM jobs GROUP BY status")}
@@ -43,4 +43,4 @@ def runtime_status(db_path):
     states=[r["status"] for r in conn.execute("SELECT status FROM jobs WHERE id IN ("+marks+")",ids).fetchall()]
    status="succeeded" if states and all(x=="succeeded" for x in states) else "failed" if any(x=="failed" for x in states) else "running" if any(x=="running" for x in states) else "queued"
    runs.append({"id":row["id"],"status":status,"title":row["title"],"created_at":row["created_at"],"job_ids":ids,"job_statuses":states})
- return {"jobs":jobs,"recent_runs":runs,"execution":"manual worker only","shell_execution":False,"external_side_effects":False}
+ return {"jobs":jobs,"recent_runs":runs,"execution":"background local worker when server is running","shell_execution":False,"external_side_effects":False}
