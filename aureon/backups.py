@@ -40,6 +40,7 @@ def backup_database(db_path, backup_dir=None, retain=7):
     try:
         with closing(sqlite3.connect(str(source), timeout=20)) as src, closing(sqlite3.connect(str(temp))) as dst:
             src.backup(dst)
+            dst.commit()
         _check(temp)
         os.replace(temp, target)
     finally:
@@ -76,6 +77,7 @@ def restore_backup(db_path, backup_path, backup_dir=None):
     try:
         with closing(sqlite3.connect(str(source))) as src, closing(sqlite3.connect(str(temp))) as dst:
             src.backup(dst)
+            dst.commit()
         _check(temp)
         os.replace(temp, target)
     finally:
