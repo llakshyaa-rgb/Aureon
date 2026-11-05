@@ -32,15 +32,16 @@ This document distinguishes implemented local workflows, live read-only provider
 ### Printify API
 - Read merchant shops.
 - Read product blueprints, print providers, variants and shipping information.
-- Requires a personal access token with shops.read and catalog.read.
-- Product creation, artwork uploads, order submission and fulfillment are not enabled.
+- Upload artwork from a public HTTPS URL and create an unpublished product with explicit one-time approval.
+- Requires shops.read and catalog.read for discovery, uploads.write for artwork upload, and products.write for product creation.
+- Publishing, order submission and fulfillment are not enabled.
 
 Provider code is committed, but credentials must be configured locally and each connection must be tested against the user's own development account. A configured token is not proof of a successful connection.
 
 ## Not implemented / not claimed complete
 
 - WooCommerce, Printful and Gelato adapters.
-- Printify product creation, artwork upload, mockup generation or order submission.
+- Printify order submission, mockup generation and fulfillment.
 - Shopify product publication, order/inventory synchronization, payment or refund actions.
 - Supplier purchasing, carrier tracking, returns, or actual fulfillment.
 - AI image generation, asset management or print-ready QA.
