@@ -13,7 +13,7 @@ Aureon may eventually interact with money, marketplaces, suppliers and customers
 ## Approval gates
 Require human approval before paying a supplier, placing a fulfillment order, spending on ads or subscriptions, publishing a listing, issuing refunds or compensation, changing payout/tax/identity/bank details, or sending customer messages that make financial or legal commitments.
 
-Approvals must be scoped to one action, target, account and amount; expire; be single-use; and be auditable. A changed amount or destination requires new approval.
+Approvals must be scoped to one action, target, account and amount; expire after 24 hours while pending; be single-use; and be auditable. A changed amount or destination requires new approval.
 
 ## Credentials and personal data
 Never commit API keys, access tokens, cookies, OAuth refresh tokens, bank information or customer personal data. Keep environment files, local databases, credential files, logs and exports out of Git. Use narrow API scopes and never print secrets in logs or health endpoints.
