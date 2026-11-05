@@ -102,10 +102,14 @@ def background_loop(db_path, stop_event, interval=3):
     """Process local jobs and due schedules while the dashboard server is running."""
     import time
     from .scheduler import initialize_scheduler, enqueue_due
+    from .backups import backup_if_due
     initialize_workspace(db_path)
     initialize_scheduler(db_path)
     while not stop_event.is_set():
         try:
+            backup = backup_if_due(db_path)
+            if backup["created"]:
+                print("[backup] verified snapshot:", backup["path"])
             enqueue_due(db_path)
             run_once(db_path)
         except Exception as exc:
