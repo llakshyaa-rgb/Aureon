@@ -84,6 +84,16 @@ def make_handler(db_path):
    if path.startswith("/api/printify/blueprints/") and path.endswith("/providers"):
     try: return self._send(200,{"providers":printify.print_providers(path.split("/")[4])})
     except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
+   if path.startswith("/api/printify/blueprints/") and path.endswith("/variants"):
+    try:
+     parts=path.split("/")
+     return self._send(200,{"variants":printify.variants(parts[4],parts[6])})
+    except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
+   if path.startswith("/api/printify/blueprints/") and path.endswith("/shipping"):
+    try:
+     parts=path.split("/")
+     return self._send(200,{"shipping":printify.shipping(parts[4],parts[6])})
+    except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
    if path=="/api/shopify/connection":
     try: return self._send(200,{"connected":True,"shop":shopify.shop_info()})
     except (ValueError,RuntimeError) as exc: return self._send(502,{"connected":False,"error":str(exc)})
