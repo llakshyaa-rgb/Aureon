@@ -56,6 +56,12 @@ class ShopifyProviderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             shopify.create_draft_product(" ", 1)
 
+    def test_draft_creation_rejects_non_finite_and_boolean_prices(self):
+        for price in (float("nan"), float("inf"), True, 0, -1):
+            with self.subTest(price=price):
+                with self.assertRaises(ValueError):
+                    shopify.create_draft_product("Test", price)
+
     def test_shop_domain_is_validated(self):
         with patch.dict(os.environ, {
             "AUREON_SHOPIFY_STORE": "not a domain",
