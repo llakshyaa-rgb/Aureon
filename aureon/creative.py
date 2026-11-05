@@ -6,6 +6,7 @@ editable vector assets locally and records provenance and validation results.
 import html
 import math
 import re
+import xml.etree.ElementTree as ET
 from .workflows import create_record, list_records
 
 PALETTES = {
@@ -45,10 +46,27 @@ def validate_svg_artwork(svg, width=4500, height=5400, safe_margin=250):
     if not isinstance(svg, str) or not svg.startswith("<svg ") or len(svg) > 200000:
         raise ValueError("artwork must be an SVG document under 200 KB")
     lowered = svg.lower()
-    if ("<script" in lowered or "javascript:" in lowered or "<foreignobject" in lowered or
-            re.search(r"\bon[a-z]+\s*=", lowered) or
-            re.search(r"""(?:href|xlink:href)\s*=\s*["']\s*(?:https?:|//|data:text/html)""", lowered)):
-        raise ValueError("active scripts, event handlers and external content are not allowed in artwork")
+    if "<!doctype" in lowered or "<!entity" in lowered:
+        raise ValueError("SVG declarations and entities are not allowed")
+    try:
+        root = ET.fromstring(svg)
+    except ET.ParseError:
+        raise ValueError("artwork must be well-formed SVG XML") from None
+    allowed_tags = {"svg", "g", "circle", "ellipse", "text", "path"}
+    allowed_attrs = {"xmlns", "width", "height", "viewBox", "role", "aria-label",
+                     "fill", "stroke", "stroke-width", "transform", "cx", "cy", "r",
+                     "rx", "ry", "x", "y", "text-anchor", "font-family", "font-size",
+                     "font-weight", "letter-spacing", "d"}
+    for element in root.iter():
+        tag = element.tag.rsplit("}", 1)[-1]
+        if tag not in allowed_tags:
+            raise ValueError("unsupported SVG element: " + tag)
+        for attr, value in element.attrib.items():
+            name = attr.rsplit("}", 1)[-1]
+            if name not in allowed_attrs or "url(" in value.lower() or "javascript:" in value.lower():
+                raise ValueError("unsupported or active SVG attribute: " + name)
+    if root.tag.rsplit("}", 1)[-1] != "svg":
+        raise ValueError("artwork root must be SVG")
     checks = {
         "svg_document": True,
         "print_dimensions": width >= 3000 and height >= 3000,
