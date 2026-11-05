@@ -29,6 +29,8 @@ def add_quote(db_path,supplier_id,quote):
   dt=datetime.fromisoformat(stamp.replace("Z","+00:00"))
   if dt.tzinfo is None:raise ValueError()
  except Exception as exc:raise ValueError("quoted_at must be timezone-aware ISO-8601") from exc
+ if dt.astimezone(timezone.utc).timestamp() > datetime.now(timezone.utc).timestamp() + 300:
+  raise ValueError("quoted_at cannot be more than five minutes in the future")
  with connect(db_path) as conn:
   conn.execute("BEGIN IMMEDIATE");row=conn.execute("SELECT * FROM workspace_records WHERE id=? AND kind='supplier'",(supplier_id,)).fetchone()
   if row is None:raise ValueError("supplier not found")
