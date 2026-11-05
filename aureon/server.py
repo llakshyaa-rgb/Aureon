@@ -30,6 +30,7 @@ from .intelligence.product_research import analyze_competition
 from .finance_reports import profit_and_loss
 from .intelligence.evaluation import evaluate_product_opportunity
 from .experiments import create_experiment,record_variant_observation,compare_experiment
+from .backups import backup_if_due,backup_database,list_backups
 
 def _shopify_draft_payload(body):
  title=str(body.get("title") or "").strip()
@@ -150,6 +151,7 @@ def make_handler(db_path):
    if path=="/api/shopify/products":
     try: return self._send(200,{"products":shopify.products()})
     except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
+   if path=="/api/backups": return self._send(200,{"backups":list_backups(db_path)})
    if path=="/api/overview":
     with connect(db_path) as c:
      jobs=c.execute("SELECT status,COUNT(*) n FROM jobs GROUP BY status").fetchall()
@@ -222,6 +224,8 @@ def make_handler(db_path):
       if changed.rowcount!=1: raise ValueError("approval has already been used")
      created=printify.create_product(shop_id,product)
      return self._send(201,{"product":created,"published":False,"provider":"Printify","approval_id":approval_id})
+    if path=="/api/backups":
+     return self._send(201,{"backup":backup_database(db_path)})
     if path=="/api/creative/collections":
      return self._send(201,create_collection(db_path,b.get("title"),b.get("concept"),b.get("styles"),b.get("palette","midnight")))
     if path=="/api/creative/mockup":
@@ -305,6 +309,11 @@ def make_handler(db_path):
 def serve(host,port,db_path):
  if host not in {"127.0.0.1","localhost","::1"}: raise ValueError("Aureon currently binds to localhost only")
  initialize(db_path);initialize_workspace(db_path);initialize_scheduler(db_path)
+ try:
+  backup=backup_if_due(db_path)
+  if backup["created"]: print("Verified database backup:",backup["path"])
+ except Exception as exc:
+  print("[backup] automatic backup failed:",str(exc))
  recovered=recover_interrupted(db_path)
  if recovered["requeued"] or recovered["failed"]: print("Recovered interrupted jobs:",recovered)
  server=ThreadingHTTPServer((host,port),make_handler(db_path))
