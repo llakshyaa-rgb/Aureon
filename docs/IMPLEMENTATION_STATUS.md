@@ -4,7 +4,8 @@ This document distinguishes implemented local workflows, live read-only data acc
 
 ## Implemented local workspace
 
-- SQLite persistence, event history, durable queue, idempotency, bounded retries and interrupted-job recovery.\n- Automatic daily integrity-checked SQLite backups, bounded retention, manual backup and verified restore.
+- SQLite persistence, event history, durable queue, idempotency, bounded retries and interrupted-job recovery.
+- Automatic daily integrity-checked SQLite backups, bounded retention, manual backup and verified restore.
 - Product, opportunity, design, listing, supplier, order, support and campaign records.
 - Product economics with estimated tax, duty, return and chargeback reserves; POD/dropshipping comparison; pricing sensitivity and break-even order scenarios.
 - Evidence-backed competitor observation analysis, integrated opportunity scoring from source evidence, competitor observations and unit economics; manual quote comparisons, sample-aware supplier scorecards and quote-based itemized simulated purchase-order preparation.
