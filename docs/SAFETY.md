@@ -3,7 +3,7 @@
 Aureon may eventually interact with money, marketplaces, suppliers and customers. These are architectural requirements.
 
 ## Defaults
-- New installations start in mock mode.
+- New installations start in local mode with no provider credentials and no automatic external actions.
 - Research connectors are read-only by default.
 - Listings are drafts by default.
 - No live supplier orders, ad spend, refunds, subscriptions or public publishing without explicit authorization.
