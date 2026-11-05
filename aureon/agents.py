@@ -71,9 +71,10 @@ def submit_plan(db_path, name, tasks, idempotency_key=None):
                 return {"run_id": row["id"], "duplicate": True}
     job = enqueue(db_path, "agent.run", {"plan": plan}, key, max_attempts=1)
     with connect(db_path) as conn:
-        existing = conn.execute("SELECT id FROM workspace_records WHERE kind='agent_run' AND json_extract(data_json,'$.idempotency_key')=?",(key,)).fetchone()
-        if existing:
-            return {"run_id": existing["id"], "job_ids": [job["id"]], "duplicate": True}
+        existing_rows = conn.execute("SELECT id,data_json FROM workspace_records WHERE kind='agent_run'").fetchall()
+        for existing in existing_rows:
+            if json.loads(existing["data_json"]).get("idempotency_key") == key:
+                return {"run_id": existing["id"], "job_ids": [job["id"]], "duplicate": True}
         cur = conn.execute("INSERT INTO workspace_records(kind,status,title,data_json) VALUES('agent_run','queued',?,?)",
             (plan["name"], json_dump({**plan, "idempotency_key": key, "job_ids": [job["id"]]})))
         run_id = cur.lastrowid
