@@ -21,7 +21,12 @@ def configured():
 
 
 def health():
-    store, token = configured()
+    try:
+        store, token = configured()
+    except ValueError as exc:
+        return {"name": "Shopify Admin GraphQL", "configured": False,
+                "connected": False, "mode": "configuration_error",
+                "detail": str(exc)}
     ready = bool(store and token)
     return {"name": "Shopify Admin GraphQL", "configured": ready,
             "connected": False, "store": store or None,
