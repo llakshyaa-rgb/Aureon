@@ -44,8 +44,11 @@ def _wrap(text, max_chars):
 def validate_svg_artwork(svg, width=4500, height=5400, safe_margin=250):
     if not isinstance(svg, str) or not svg.startswith("<svg ") or len(svg) > 200000:
         raise ValueError("artwork must be an SVG document under 200 KB")
-    if "<script" in svg.lower() or "javascript:" in svg.lower() or "<foreignObject" in svg:
-        raise ValueError("active or embedded HTML content is not allowed in artwork")
+    lowered = svg.lower()
+    if ("<script" in lowered or "javascript:" in lowered or "<foreignobject" in lowered or
+            re.search(r"\\bon[a-z]+\\s*=", lowered) or
+            re.search(r"""(?:href|xlink:href)\\s*=\\s*["']\\s*(?:https?:|//|data:text/html)""", lowered)):
+        raise ValueError("active scripts, event handlers and external content are not allowed in artwork")
     checks = {
         "svg_document": True,
         "print_dimensions": width >= 3000 and height >= 3000,
