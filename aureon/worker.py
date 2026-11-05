@@ -44,7 +44,7 @@ def run_once(db_path):
   result=process_job(job,db_path);finish(db_path,job["id"],result)
   return {"id":job["id"],"status":"succeeded","result":result}
  except Exception as exc:
-  fail(db_path,job["id"],str(exc),retry=True)
+  fail(db_path,job["id"],str(exc),retry=isinstance(exc, RuntimeError))
   return {"id":job["id"],"status":"failed","error":str(exc)}
 def run_until_empty(db_path,max_jobs=100):
  outcomes=[]
