@@ -10,7 +10,7 @@ from aureon.intelligence.scenarios import pricing_scenarios, break_even_orders
 from aureon.finance_reports import profit_and_loss
 from aureon.intelligence.evaluation import evaluate_product_opportunity
 from aureon.agents import plan_run, submit_plan
-from aureon.jobs import list_jobs
+from aureon.jobs import list_jobs, enqueue
 from aureon.worker import run_once
 
 
@@ -125,6 +125,10 @@ class ExtendedCapabilityTests(unittest.TestCase):
         self.assertEqual(job["status"], "succeeded")
         self.assertEqual(len(job["result"]["result"]["steps"]), 2)
         self.assertEqual(list_jobs(self.db)[0]["status"], "succeeded")
+
+    def test_agent_run_jobs_are_always_single_attempt(self):
+        job = enqueue(self.db, "agent.run", {"plan":{"name":"safe","tasks":[]}})
+        self.assertEqual(job["max_attempts"], 1)
 
     def test_worker_revalidates_raw_agent_job_payload(self):
         from aureon.worker import process_job
