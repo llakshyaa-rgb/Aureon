@@ -7,13 +7,13 @@ This document distinguishes implemented local workflows, live read-only data acc
 - SQLite persistence, event history, durable queue, idempotency, bounded retries and interrupted-job recovery.
 - Product, opportunity, design, listing, supplier, order, support and campaign records.
 - Product economics with estimated tax, duty, return and chargeback reserves; POD/dropshipping comparison; pricing sensitivity and break-even order scenarios.
-- Evidence-backed competitor observation analysis, manual quote comparisons and quote-based itemized simulated purchase-order preparation.
+- Evidence-backed competitor observation analysis, integrated opportunity scoring from source evidence, competitor observations and unit economics; manual quote comparisons and quote-based itemized simulated purchase-order preparation.
 - Local editable SVG creative studio with five styles, five palettes, saved assets, multi-style collections, print-size checks and illustrative flat mockups.
 - Persistent A/B marketing experiments with per-variant observations and descriptive comparison; no statistical significance claims or publishing.
 - Collected Google Trends snapshot history and rank movement across the latest two saved snapshots.
 - Order-aware support response drafts using locally recorded fulfillment status; responses remain unsent.
 - Period-filtered, multi-currency P&L reporting that keeps actual and estimated entries separate.
-- Dependency-aware supervised agent plans with validated earlier-step references and sequential execution.
+- Dependency-aware supervised agent plans with validated earlier-step references and sequential execution, including creative collections, opportunity evaluation, channel comparison and quote-based order preparation.
 - Draft generation for design briefs, listings, marketing and support.
 - Campaign observations and CTR, conversion, CPA and ROAS calculations.
 - Actual-versus-estimated finance ledger, manual reconciliation and scenario cash-flow projections.
