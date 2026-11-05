@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime,timedelta,timezone
 from aureon.db import initialize,connect
 from aureon.workflows import initialize_workspace,decide_approval,request_approval
-from aureon.support import open_ticket,draft_response,support_queue,add_internal_note
+from aureon.support import open_ticket,draft_response,draft_contextual_response,support_queue,add_internal_note
 from aureon.finance import reconcile,cashflow_projection
 from aureon.marketing import create_campaign,request_campaign_approval,campaign_overview
 from aureon.agents import plan_run,submit_plan,runtime_status
@@ -20,6 +20,17 @@ class LastSixTests(unittest.TestCase):
   d=draft_response(self.db,t["id"],"We are escalating this to our team.")
   self.assertFalse(d["sent"]);add_internal_note(self.db,t["id"],"Check incident")
   self.assertEqual(support_queue(self.db)["urgent_count"],1)
+ def test_support_context_uses_recorded_order_status_without_sending(self):
+  order=create_order(self.db,"Desk mat",1,12,"USD")
+  _,approval=request_supplier_order_approval(self.db,order["id"])
+  decide_approval(self.db,approval["id"],"approved")
+  record_supplier_submission(self.db,order["id"],approval["id"],"PO-CTX")
+  update_tracking(self.db,order["id"],"TRACK-CTX","in_production")
+  ticket=open_ticket(self.db,"Where is my order?","Can you update me?",order_reference=order["id"])
+  self.assertTrue(ticket["data"]["order_context"]["matched"])
+  response=draft_contextual_response(self.db,ticket["id"])
+  self.assertFalse(response["sent"])
+  self.assertIn("in production",response["response"])
  def test_finance_reconciliation_and_forecast(self):
   r=reconcile(self.db,"USD",100,100);self.assertTrue(r["reconciled"])
   f=cashflow_projection(self.db,100,30,50,20,"USD");self.assertEqual(f["projected_closing_cash"],130)
