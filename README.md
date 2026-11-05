@@ -34,6 +34,21 @@ Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C. The dashboard s
 - Automatic daily integrity-checked SQLite backups with seven-backup rotation, manual backup and verified restore commands.
 - Dependency-aware, allowlisted agent plans with prior-step output references; no shell execution or arbitrary code execution.
 
+## Local backups
+
+The dashboard creates an integrity-checked SQLite backup at most once per 24 hours and retains the seven newest backups in `data/backups/`. Create or inspect backups manually:
+
+```bash
+python -m aureon.cli backup
+python -m aureon.cli backups
+```
+
+To restore, stop the Aureon server first. The current database is backed up before the selected snapshot replaces it:
+
+```bash
+python -m aureon.cli restore data/backups/aureon-YYYYMMDD-HHMMSS-ffffff.sqlite3
+```
+
 ## Live integrations
 
 ### Google Trends
