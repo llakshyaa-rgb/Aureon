@@ -3,7 +3,7 @@ from pathlib import Path
 from aureon.db import initialize
 from aureon.workflows import initialize_workspace,request_approval,decide_approval,create_record,transition_record,add_finance_entry
 from aureon.research import assess_opportunity,save_opportunity
-from aureon.suppliers import add_supplier,add_quote,compare_supplier_quotes
+from aureon.suppliers import add_supplier,add_quote,compare_supplier_quotes,prepare_order_from_best_quote
 from aureon.operations import create_order,request_supplier_order_approval,record_supplier_submission,update_tracking
 from aureon.analytics import campaign_metrics,record_campaign_metrics
 from aureon.scheduler import initialize_scheduler,schedule_job,enqueue_due
@@ -31,6 +31,14 @@ class ExpandedCommerceTests(unittest.TestCase):
   r=compare_supplier_quotes(self.db,"desk mat","US","USD")
   self.assertEqual(r["best_quote"]["landed_cost"],11);self.assertEqual(len(r["quotes"]),1)
   with self.assertRaises(ValueError):add_quote(self.db,s["id"],{"product_cost":float("nan"),"shipping_cost":0,"currency":"USD","destination":"US","quoted_at":"2026-11-03T10:00:00Z"})
+ def test_best_quote_prepares_itemized_order_and_requires_approval(self):
+  supplier=add_supplier(self.db,"Supplier A","manual","desk mat")
+  add_quote(self.db,supplier["id"],{"product_cost":8,"shipping_cost":3,"currency":"USD","destination":"US","quoted_at":"2026-11-05T10:00:00+00:00"})
+  prepared=prepare_order_from_best_quote(self.db,"Desk mat",2,"desk mat","US","USD")
+  order=prepared["order"]
+  self.assertEqual(order["data"]["total_supplier_cost"],19)
+  self.assertEqual(order["data"]["supplier_cost_breakdown"]["shipping_total"],3)
+  self.assertTrue(prepared["approval_required_before_supplier_submission"])
  def test_order_approval_is_matching_single_use_and_amount_bound(self):
   order=create_order(self.db,"Desk mat",2,8,"USD")
   with self.assertRaises(ValueError):record_supplier_submission(self.db,order["id"],999,"PO-1")
