@@ -62,9 +62,10 @@ def prepare_order_from_best_quote(db_path, product_title, quantity, product_type
     if isinstance(quantity, bool) or not isinstance(quantity, int) or not 1 <= quantity <= 10000:
         raise ValueError("quantity must be 1..10000")
     comparison = compare_supplier_quotes(db_path, product_type, destination, currency)
-    best = comparison["best_quote"]
-    if best is None:
-        raise ValueError("no comparable supplier quote exists for this product, destination and currency")
+    fresh_quotes = [item for item in comparison["quotes"] if item["freshness"] == "fresh"]
+    if not fresh_quotes:
+        raise ValueError("no fresh comparable supplier quote exists; obtain a quote from the last 7 days")
+    best = fresh_quotes[0]
     quote = best["quote"]
     total = round(quantity * quote["product_cost"] + quote["shipping_cost"], 2)
     blended_unit_cost = total / quantity
