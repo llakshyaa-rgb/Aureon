@@ -38,6 +38,10 @@ def _shopify_draft_key(payload):
  raw=json.dumps(payload,sort_keys=True,separators=(",",":"),ensure_ascii=False)
  return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
+def _printify_draft_key(shop_id, product):
+ raw=json.dumps({"shop_id":str(shop_id),"product":product},sort_keys=True,separators=(",",":"),ensure_ascii=False)
+ return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
 PAGE="""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aureon</title>
 <style>:root{color-scheme:dark;font-family:system-ui;background:#0b1020;color:#e8edf7}body{max-width:1000px;margin:28px auto;padding:0 16px}
 header,.grid{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}h1{letter-spacing:-1px}.muted,small{color:#9aa8bd}
@@ -162,6 +166,25 @@ def make_handler(db_path):
       if changed.rowcount!=1: raise ValueError("approval has already been used")
      product=shopify.create_draft_product(draft["title"],draft["description"],draft["vendor"],draft["product_type"],draft["tags"])
      return self._send(201,{"product":product,"published":False,"provider":"Shopify","approval_id":approval_id})
+    if path=="/api/printify/uploads":
+     uploaded=printify.upload_image_url(b.get("file_name"),b.get("image_url"))
+     return self._send(201,{"upload":uploaded})
+    if path=="/api/printify/products/approval":
+     shop_id=b.get("shop_id");product=b.get("product")
+     approval=request_approval(db_path,"create_printify_draft","printify_product",_printify_draft_key(shop_id,product),"Approve creation of this unpublished Printify product")
+     return self._send(201,{"approval":approval})
+    if path=="/api/printify/products":
+     shop_id=b.get("shop_id");product=b.get("product");approval_id=b.get("approval_id")
+     if isinstance(approval_id,bool) or not isinstance(approval_id,int): raise ValueError("approval_id is required")
+     with connect(db_path) as conn:
+      conn.execute("BEGIN IMMEDIATE")
+      approval=conn.execute("SELECT * FROM approvals WHERE id=?",(approval_id,)).fetchone()
+      if approval is None or approval["status"]!="approved" or approval["action"]!="create_printify_draft" or approval["target_type"]!="printify_product" or approval["target_id"]!=_printify_draft_key(shop_id,product):
+       raise ValueError("a matching approved Printify product request is required")
+      changed=conn.execute("UPDATE approvals SET status='consumed' WHERE id=? AND status='approved'",(approval_id,))
+      if changed.rowcount!=1: raise ValueError("approval has already been used")
+     created=printify.create_product(shop_id,product)
+     return self._send(201,{"product":created,"published":False,"provider":"Printify","approval_id":approval_id})
     if path=="/api/trends/collect": return self._send(202,{"job":enqueue(db_path,"trends.collect",{"geo":b.get("geo","IN"),"limit":b.get("limit",25)},b.get("idempotency_key"))})
     if path=="/api/jobs": return self._send(201,{"job":enqueue(db_path,str(b.get("kind","")),b.get("payload",{}),b.get("idempotency_key"))})
     if path=="/api/records": return self._send(201,{"record":create_record(db_path,b.get("kind"),b.get("title"),b.get("data",{}),b.get("status"))})
