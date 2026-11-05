@@ -194,6 +194,7 @@ def make_handler(db_path):
     if path=="/api/agents/plans": return self._send(201,submit_plan(db_path,b.get("name",""),b.get("tasks"),b.get("idempotency_key")))
     if path=="/api/commands/interpret": return self._send(200,interpret_command(b.get("command","")))
     return self._send(404,{"error":"not_found"})
+   except RuntimeError as exc: return self._send(502,{"error":str(exc)})
    except (ValueError,TypeError,KeyError,json.JSONDecodeError) as exc: return self._send(400,{"error":str(exc)})
   def do_PATCH(self):
    path=urlparse(self.path).path
