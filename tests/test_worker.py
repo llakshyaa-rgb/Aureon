@@ -19,7 +19,7 @@ class WorkerTests(unittest.TestCase):
   enqueue(self.db,"trends.collect",{"geo":"IN","limit":1})
   with patch("aureon.worker.collect_trends",side_effect=RuntimeError("temporary provider outage")):
    result=run_once(self.db)
-  self.assertEqual(result["status"],"failed")
+  self.assertEqual(result["status"],"retrying")
   self.assertEqual(list_jobs(self.db)[0]["status"],"queued")
   self.assertEqual(list_jobs(self.db)[0]["attempts"],1)
  def test_unknown_job_fails_without_loop(self):
