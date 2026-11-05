@@ -46,6 +46,8 @@ def process_job(job,db_path=None):
   if db_path is None:raise ValueError("database path required")
   plan=payload.get("plan")
   if not isinstance(plan,dict) or not isinstance(plan.get("tasks"),list):raise ValueError("agent plan is invalid")
+  from .agents import plan_run
+  plan=plan_run(plan.get("name"),plan["tasks"])
   outputs=[]
   def resolve(value):
    if isinstance(value,dict) and set(value)=={"$from","path"}:
