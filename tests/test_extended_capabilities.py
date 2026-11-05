@@ -73,7 +73,7 @@ class ExtendedCapabilityTests(unittest.TestCase):
         tasks = [
             {"kind":"creative.generate","payload":{"title":"Orbit","concept":"Planets","style":"orbit","palette":"midnight"}},
             {"kind":"listing.draft","depends_on":[0],"payload":{
-                "product":{"title":"$from-art","features":"Original artwork"},
+                "product":{"title":{"$from":0,"path":"result.record.title"},"features":"Original artwork"},
                 "audience":"space fans","keywords":["space","planet"]}},
         ]
         plan = plan_run("Creative to listing", tasks)
