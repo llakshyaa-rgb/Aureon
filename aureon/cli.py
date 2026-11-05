@@ -16,7 +16,7 @@ def main():
  sub.add_parser("status",help="show local runtime status")
  sub.add_parser("features",help="list product scope and implementation status")
  sub.add_parser("workspace",help="show local commerce workspace records")
- w=sub.add_parser("work",help="process queued mock-mode jobs");w.add_argument("--max-jobs",type=int,default=100)
+ w=sub.add_parser("work",help="process queued local jobs");w.add_argument("--max-jobs",type=int,default=100)
  t=sub.add_parser("tick",help="enqueue due scheduled jobs without executing them");t.add_argument("--now",default=None)
  args=p.parse_args()
  if args.command=="features":
