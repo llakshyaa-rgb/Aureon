@@ -197,7 +197,7 @@ def make_handler(db_path):
      return self._send(201,{"product":created,"published":False,"provider":"Printify","approval_id":approval_id})
     if path=="/api/trends/collect":
      geo=b.get("geo","IN");limit=b.get("limit",25)
-     if not isinstance(geo,str) or len(geo)!=2 or not geo.isalpha(): raise ValueError("geo must be a two-letter country code")
+     if not isinstance(geo,str) or len(geo)!=2 or not geo.isascii() or not geo.isalpha(): raise ValueError("geo must be a two-letter country code")
      if isinstance(limit,bool) or not isinstance(limit,int) or not 1<=limit<=100: raise ValueError("limit must be between 1 and 100")
      return self._send(202,{"job":enqueue(db_path,"trends.collect",{"geo":geo.upper(),"limit":limit},b.get("idempotency_key"))})
     if path=="/api/jobs": return self._send(201,{"job":enqueue(db_path,str(b.get("kind","")),b.get("payload",{}),b.get("idempotency_key"))})
