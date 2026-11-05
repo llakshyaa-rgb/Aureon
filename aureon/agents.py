@@ -49,9 +49,9 @@ def plan_run(name, tasks):
         if missing:
             raise ValueError("task " + str(i) + " missing " + ", ".join(sorted(missing)))
         deps = task.get("depends_on", [])
-        if not isinstance(deps, list) or len(deps) != len(set(deps)) or any(
+        if not isinstance(deps, list) or any(
             isinstance(dep, bool) or not isinstance(dep, int) or dep < 0 or dep >= i for dep in deps
-        ):
+        ) or len(deps) != len(set(deps)):
             raise ValueError("dependencies must reference unique earlier step indexes")
         _validate_refs(task["payload"], i, deps)
         clean.append({"step": i, "kind": task["kind"], "payload": task["payload"], "depends_on": deps})
@@ -67,13 +67,19 @@ def submit_plan(db_path, name, tasks, idempotency_key=None):
     with connect(db_path) as conn:
         rows = conn.execute("SELECT id,data_json FROM workspace_records WHERE kind='agent_run'").fetchall()
         for row in rows:
-            if json.loads(row["data_json"]).get("idempotency_key") == key:
+            existing_data = json.loads(row["data_json"])
+            if existing_data.get("idempotency_key") == key:
+                if existing_data.get("name") != plan["name"] or existing_data.get("tasks") != plan["tasks"]:
+                    raise ValueError("idempotency_key already belongs to a different agent plan")
                 return {"run_id": row["id"], "duplicate": True}
     job = enqueue(db_path, "agent.run", {"plan": plan}, key, max_attempts=1)
     with connect(db_path) as conn:
         existing_rows = conn.execute("SELECT id,data_json FROM workspace_records WHERE kind='agent_run'").fetchall()
         for existing in existing_rows:
-            if json.loads(existing["data_json"]).get("idempotency_key") == key:
+            existing_data = json.loads(existing["data_json"])
+            if existing_data.get("idempotency_key") == key:
+                if existing_data.get("name") != plan["name"] or existing_data.get("tasks") != plan["tasks"]:
+                    raise ValueError("idempotency_key already belongs to a different agent plan")
                 return {"run_id": existing["id"], "job_ids": [job["id"]], "duplicate": True}
         cur = conn.execute("INSERT INTO workspace_records(kind,status,title,data_json) VALUES('agent_run','queued',?,?)",
             (plan["name"], json_dump({**plan, "idempotency_key": key, "job_ids": [job["id"]]})))
