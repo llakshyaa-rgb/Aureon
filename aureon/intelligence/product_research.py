@@ -18,8 +18,8 @@ def validate_observations(observations):
         if not isinstance(item, dict):
             raise ValueError("each observation must be an object")
         url = item.get("url")
-        if not isinstance(url, str):
-            raise ValueError("each observation needs a public source URL")
+        if not isinstance(url, str) or not url.strip() or len(url) > 2048 or url != url.strip() or any(ord(ch) < 33 for ch in url):
+            raise ValueError("each observation needs a valid public source URL")
         parsed = urlparse(url)
         if parsed.scheme not in {"https", "http"} or not parsed.hostname or parsed.username or parsed.password:
             raise ValueError("observation URLs must be public HTTP(S) URLs")
@@ -46,7 +46,7 @@ def validate_observations(observations):
     if not clean:
         raise ValueError("at least one unique valid observation is required")
     currencies = {x["currency"] for x in clean}
-    if len(currencies) != 1 or any(len(x) != 3 or not x.isalpha() for x in currencies):
+    if len(currencies) != 1 or any(len(x) != 3 or not x.isascii() or not x.isalpha() for x in currencies):
         raise ValueError("all observed prices must use one valid currency")
     return clean
 
