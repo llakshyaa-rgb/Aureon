@@ -17,7 +17,7 @@ def request(path):
     token = os.getenv("AUREON_PRINTIFY_API_TOKEN", "").strip()
     if not token:
         raise RuntimeError("Printify token is not configured.")
-    if not path.startswith("/") or ".." in path or "?" in path or "#" in path:
+    if not path.startswith("/") or ".." in path or "#" in path:
         raise ValueError("invalid Printify API path")
     req = Request(BASE + path, headers={
         "Authorization": "Bearer " + token,
