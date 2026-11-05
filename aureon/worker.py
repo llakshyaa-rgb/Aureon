@@ -1,6 +1,9 @@
 """Local worker for persistent, non-publishing commerce workflows."""
 from .jobs import claim_next,finish,fail
 from .commerce import build_design_brief,generate_listing_draft,draft_marketing_content,triage_support_ticket
+from .creative import create_asset,generate_vector_artwork
+from .intelligence.product_research import analyze_competition
+from .intelligence.scenarios import pricing_scenarios
 from .intelligence.economics import Offer,calculate_unit_economics,compare_channels
 from .research import save_opportunity
 from .analytics import campaign_metrics,record_campaign_metrics
@@ -11,6 +14,11 @@ def process_job(job,db_path=None):
  if kind=="design.brief":
   result=build_design_brief(**payload)
   if db_path is not None:result={"draft":result,"record":create_record(db_path,"design",payload.get("concept","Design brief"),result,"brief")}
+ elif kind=="creative.generate":
+  result=create_asset(db_path,**payload) if db_path is not None else generate_vector_artwork(**payload)
+ elif kind=="research.competitors":result=analyze_competition(payload["observations"])
+ elif kind=="economics.scenarios":
+  result=pricing_scenarios(Offer(**payload["offer"]),payload.get("prices"),payload.get("target_margin",0.25))
  elif kind=="listing.draft":
   result=generate_listing_draft(**payload)
   if db_path is not None:result={"draft":result,"record":create_record(db_path,"listing",payload.get("product",{}).get("title","Listing draft"),result,"draft")}
@@ -34,6 +42,27 @@ def process_job(job,db_path=None):
  elif kind=="product.create":
   if db_path is None:raise ValueError("database path required")
   result=create_record(db_path,"product",payload["title"],payload.get("data",{}),"draft")
+ elif kind=="agent.run":
+  if db_path is None:raise ValueError("database path required")
+  plan=payload.get("plan")
+  if not isinstance(plan,dict) or not isinstance(plan.get("tasks"),list):raise ValueError("agent plan is invalid")
+  outputs=[]
+  def resolve(value):
+   if isinstance(value,dict) and set(value)=={"$from","path"}:
+    step=value["$from"]
+    if isinstance(step,bool) or not isinstance(step,int) or step<0 or step>=len(outputs):raise ValueError("agent output reference is unavailable")
+    current=outputs[step]
+    for part in value["path"].split("."):
+     if isinstance(current,dict) and part in current:current=current[part]
+     else:raise ValueError("agent output reference path does not exist: "+value["path"])
+    return current
+   if isinstance(value,dict):return {k:resolve(v) for k,v in value.items()}
+   if isinstance(value,list):return [resolve(v) for v in value]
+   return value
+  for step in plan["tasks"]:
+   if any(dep>=len(outputs) for dep in step.get("depends_on",[])):raise ValueError("agent dependency did not complete")
+   outputs.append(process_job({"kind":step["kind"],"payload":resolve(step["payload"])},db_path))
+  result={"run_name":plan.get("name"),"steps":[{"step":i,"kind":plan["tasks"][i]["kind"],"status":"succeeded","output":out} for i,out in enumerate(outputs)],"status":"succeeded"}
  else:raise ValueError("No safe processor registered for job kind: "+kind)
  return {"mode":"local","kind":kind,"result":result}
 def run_once(db_path):
