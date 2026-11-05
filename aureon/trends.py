@@ -63,3 +63,43 @@ def fetch_trending_searches(geo="IN", limit=25, timeout=12):
             "Use source links and independent validation before investing money.",
         ],
     }
+
+
+
+def collect_trends(db_path, geo="IN", limit=25):
+    """Persist deduplicated live search signals as research-stage opportunities."""
+    from urllib.parse import urlparse
+    from .workflows import create_record, list_records
+
+    result = fetch_trending_searches(geo, limit)
+    existing = list_records(db_path, "opportunity", 250)
+    known = {
+        (row["data"].get("trend_geo"), row["data"].get("trend_title"),
+         row["data"].get("trend_published_at"))
+        for row in existing
+    }
+    created = []
+    for item in result["items"]:
+        key = (result["geo"], item["title"], item["published_at"])
+        if key in known:
+            continue
+        source_url = item["link"] or (BASE_URL + "?geo=" + result["geo"])
+        if urlparse(source_url).scheme not in {"http", "https"}:
+            source_url = BASE_URL + "?geo=" + result["geo"]
+        record = create_record(
+            db_path, "opportunity", item["title"],
+            {"evidence": [{"source_url": source_url,
+                           "collected_at": result["fetched_at"],
+                           "published_at": item["published_at"]}],
+             "trend_provider": result["provider"], "trend_geo": result["geo"],
+             "trend_title": item["title"], "trend_published_at": item["published_at"],
+             "trend_traffic": item["traffic"], "related_news": item["news"],
+             "research_status": "unvalidated_trend_signal"},
+            "research")
+        )
+        created.append(record["id"])
+        known.add(key)
+    return {"provider": result["provider"], "geo": result["geo"],
+            "fetched_at": result["fetched_at"], "fetched": result["count"],
+            "created": len(created), "record_ids": created,
+            "note": "Trend signals are not verified demand or sales."}
