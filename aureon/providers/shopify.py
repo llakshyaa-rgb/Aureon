@@ -14,7 +14,7 @@ def configured():
     token = os.getenv("AUREON_SHOPIFY_ACCESS_TOKEN", "").strip()
     if store and not store.endswith(".myshopify.com"):
         store += ".myshopify.com"
-    if store and not re.fullmatch(r"[a-z0-9][a-z0-9-]*\\.myshopify\\.com", store):
+    if store and not re.fullmatch(r"[a-z0-9][a-z0-9-]*\.myshopify\.com", store):
         raise ValueError("AUREON_SHOPIFY_STORE must be a myshopify.com domain")
     return store, token
 
