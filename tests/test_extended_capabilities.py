@@ -97,10 +97,19 @@ class ExtendedCapabilityTests(unittest.TestCase):
         self.assertEqual(len(result["job_ids"]), 1)
         duplicate = submit_plan(self.db, "Creative to listing", tasks, "dependency-plan")
         self.assertTrue(duplicate["duplicate"])
+        with self.assertRaises(ValueError):
+            submit_plan(self.db, "Different plan", tasks, "dependency-plan")
         job = run_once(self.db)
         self.assertEqual(job["status"], "succeeded")
         self.assertEqual(len(job["result"]["result"]["steps"]), 2)
         self.assertEqual(list_jobs(self.db)[0]["status"], "succeeded")
+
+    def test_worker_revalidates_raw_agent_job_payload(self):
+        from aureon.worker import process_job
+        with self.assertRaises(ValueError):
+            process_job({"kind":"agent.run","payload":{"plan":{"name":"nested","tasks":[
+                {"kind":"agent.run","payload":{"plan":{"name":"recursive","tasks":[]}}}
+            ]}}}, self.db)
 
     def test_dependency_rejects_forward_and_undeclared_references(self):
         with self.assertRaises(ValueError):
