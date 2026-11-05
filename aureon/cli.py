@@ -8,6 +8,7 @@ from .features import all_features
 from .workflows import initialize_workspace,list_records,finance_summary,list_approvals
 from .worker import run_until_empty
 from .scheduler import initialize_scheduler,enqueue_due
+from .backups import backup_database,list_backups,restore_backup
 
 def main():
  p=argparse.ArgumentParser(prog="aureon");sub=p.add_subparsers(dest="command",required=True)
@@ -16,6 +17,10 @@ def main():
  sub.add_parser("status",help="show local runtime status")
  sub.add_parser("features",help="list product scope and implementation status")
  sub.add_parser("workspace",help="show local commerce workspace records")
+ sub.add_parser("backup",help="create a verified SQLite backup")
+ sub.add_parser("backups",help="list retained SQLite backups")
+ restore=sub.add_parser("restore",help="restore a verified SQLite backup (stop the server first)")
+ restore.add_argument("backup_path")
  w=sub.add_parser("work",help="process queued local jobs");w.add_argument("--max-jobs",type=int,default=100)
  t=sub.add_parser("tick",help="enqueue due scheduled jobs without executing them");t.add_argument("--now",default=None)
  args=p.parse_args()
@@ -47,4 +52,10 @@ def main():
  elif args.command=="workspace":
   initialize(s.db_path);initialize_workspace(s.db_path)
   for r in list_records(s.db_path): print("#%s %s [%s] %s"%(r["id"],r["kind"],r["status"],r["title"]))
+ elif args.command=="backup":
+  initialize(s.db_path);print("Backup:",backup_database(s.db_path))
+ elif args.command=="backups":
+  for item in list_backups(s.db_path):print(item)
+ elif args.command=="restore":
+  initialize(s.db_path);print("Restore:",restore_backup(s.db_path,args.backup_path))
 if __name__=="__main__": main()
