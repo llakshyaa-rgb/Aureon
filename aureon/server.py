@@ -161,7 +161,9 @@ def make_handler(db_path):
    if path=="/api/finance": return self._send(200,{"summary":finance_summary(db_path)})
    if path=="/api/suppliers": return self._send(200,{"suppliers":list_records(db_path,"supplier",250)})
    if path=="/api/suppliers/compare":
-    q=parse_qs(urlparse(self.path).query);return self._send(200,compare_supplier_quotes(db_path,q.get("product_type",[""])[0],q.get("destination",[""])[0],q.get("currency",["USD"])[0]))
+    q=parse_qs(urlparse(self.path).query)
+    try: return self._send(200,compare_supplier_quotes(db_path,q.get("product_type",[""])[0],q.get("destination",[""])[0],q.get("currency",["USD"])[0]))
+    except ValueError as exc: return self._send(400,{"error":str(exc)})
    if path.startswith("/api/suppliers/") and path.endswith("/scorecard"):
     try: return self._send(200,supplier_scorecard(db_path,int(path.split("/")[3])))
     except ValueError as exc: return self._send(400,{"error":str(exc)})
@@ -175,7 +177,8 @@ def make_handler(db_path):
    if path=="/api/finance/dashboard": return self._send(200,financial_dashboard(db_path))
    if path=="/api/finance/profit-and-loss":
     q=parse_qs(urlparse(self.path).query)
-    return self._send(200,profit_and_loss(db_path,q.get("start",[None])[0],q.get("end",[None])[0],q.get("currency",[None])[0]))
+    try: return self._send(200,profit_and_loss(db_path,q.get("start",[None])[0],q.get("end",[None])[0],q.get("currency",[None])[0]))
+    except ValueError as exc: return self._send(400,{"error":str(exc)})
    if path=="/api/creative/assets": return self._send(200,{"assets":list_assets(db_path)})
    if path=="/api/agents": return self._send(200,runtime_status(db_path))
    if path=="/api/command-center": return self._send(200,dashboard_snapshot(db_path))
