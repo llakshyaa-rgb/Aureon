@@ -1,6 +1,7 @@
 """Shopify Admin GraphQL provider: read catalog and create unpublished drafts."""
 import html
 import json
+import math
 import os
 import re
 from urllib.request import Request, urlopen
@@ -82,11 +83,13 @@ def create_draft_product(title, price, description="", vendor="", product_type="
         raise ValueError("title is required and must be 255 characters or fewer")
     if len(description) > 5000:
         raise ValueError("description must be 5000 characters or fewer")
+    if isinstance(price, bool):
+        raise ValueError("price must be a positive finite amount")
     try:
         price = round(float(price), 2)
     except (TypeError, ValueError):
-        raise ValueError("price must be a positive amount") from None
-    if price <= 0:
+        raise ValueError("price must be a positive finite amount") from None
+    if not math.isfinite(price) or price <= 0:
         raise ValueError("price must be a positive amount")
     if not isinstance(tags, (list, tuple)):
         tags = []
@@ -123,7 +126,13 @@ def create_draft_product(title, price, description="", vendor="", product_type="
     price_result = priced.get("productVariantsBulkUpdate") or {}
     price_errors = price_result.get("userErrors") or []
     if price_errors:
-        raise RuntimeError("Shopify draft exists but price update failed: " + "; ".join(
-            str(x.get("message", "price update error")) for x in price_errors[:4]))
-    created["variant_price"] = price_result.get("productVariants", [{}])[0].get("price")
+        raise RuntimeError("Shopify draft " + str(created.get("id")) +
+                           " exists but its initial variant price update failed: " + "; ".join(
+            str(x.get("message", "price update error")) for x in price_errors[:4]) +
+                           ". Check this draft in Shopify before retrying to avoid duplicates.")
+    priced_variants = price_result.get("productVariants") or []
+    if not priced_variants or priced_variants[0].get("price") is None:
+        raise RuntimeError("Shopify draft " + str(created.get("id")) +
+                           " exists but Shopify did not confirm its variant price. Check the draft before retrying.")
+    created["variant_price"] = priced_variants[0]["price"]
     return created
