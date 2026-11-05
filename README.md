@@ -35,7 +35,7 @@ Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C. The dashboard s
 Public Trending RSS by country code. Fetch trends in the dashboard, or save unique signals as research-stage opportunity records. Trend attention is not proof of product demand or sales.
 
 ### Shopify
-Admin GraphQL adapter for connection testing, product catalog reads and creating unpublished DRAFT products after an explicit dashboard confirmation. Uses API version 2026-10. Create a custom app on a development store with read_products and write_products scopes. Set AUREON_SHOPIFY_STORE and AUREON_SHOPIFY_ACCESS_TOKEN in the local .env file. No publishing, order placement, inventory mutation, refunds or payments are exposed.
+Admin GraphQL adapter for connection testing, product catalog reads and creating unpublished DRAFT products after a separate approval request and an explicit approval action in the dashboard. Uses API version 2026-10. Create a custom app on a development store with read_products and write_products scopes. Set AUREON_SHOPIFY_STORE and AUREON_SHOPIFY_ACCESS_TOKEN in the local .env file. No publishing, order placement, inventory mutation, refunds or payments are exposed.
 
 ### Printify
 Read-only merchant shop and catalog discovery: shops, product blueprints, print providers, variants and shipping data. Set AUREON_PRINTIFY_API_TOKEN in .env with shops.read and catalog.read scopes. Product creation, artwork upload and order submission are not enabled.
@@ -45,7 +45,7 @@ A provider token being present only means credentials are configured. Use the da
 ## API
 
 - GET /health, GET /api/providers, GET /api/trends?geo=IN, POST /api/trends/collect
-- GET /api/shopify/connection, GET /api/shopify/products, POST /api/shopify/drafts
+- GET /api/shopify/connection, GET /api/shopify/products, POST /api/shopify/drafts/approval, POST /api/shopify/drafts
 - GET /api/printify/shops, GET /api/printify/blueprints
 - GET /api/printify/blueprints/{id}/providers
 - GET /api/printify/blueprints/{id}/providers/{provider_id}/variants and /shipping
