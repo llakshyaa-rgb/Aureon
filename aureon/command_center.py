@@ -8,7 +8,7 @@ def dashboard_snapshot(db_path):
  records=list_records(db_path,None,250);counts={}
  for r in records:counts[r["kind"]]=counts.get(r["kind"],0)+1
  approvals=list_approvals(db_path)
- return {"mode":"mock","records":counts,"pending_approvals":sum(a["status"]=="pending" for a in approvals),
+ return {"mode":"local","records":counts,"pending_approvals":sum(a["status"]=="pending" for a in approvals),
  "approvals":approvals[:20],"jobs":list_jobs(db_path,30),"finance":finance_summary(db_path),
  "schedules":list_scheduled(db_path)[:30],"agents":runtime_status(db_path),"recent_records":records[:30],
  "safety":{"localhost_only":True,"publishing_enabled":False,"supplier_orders_enabled":False,"ad_spend_enabled":False}}
