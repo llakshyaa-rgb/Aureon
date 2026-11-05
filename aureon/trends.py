@@ -8,7 +8,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import re
+import json
 import xml.etree.ElementTree as ET
+from .db import connect,json_dump
 
 BASE_URL = "https://trends.google.com/trending/rss"
 
@@ -72,6 +74,13 @@ def collect_trends(db_path, geo="IN", limit=25):
     from .workflows import create_record, list_records
 
     result = fetch_trending_searches(geo, limit)
+    with connect(db_path) as conn:
+        snapshot = {"geo": result["geo"], "fetched_at": result["fetched_at"],
+                    "items": [{"title": item["title"], "traffic": item["traffic"],
+                               "published_at": item["published_at"], "link": item["link"]}
+                              for item in result["items"]]}
+        conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
+                     ("trends.snapshot", "trend_snapshot", result["geo"], json_dump(snapshot)))
     existing = list_records(db_path, "opportunity", 250)
     known = {
         (row["data"].get("trend_geo"), row["data"].get("trend_title"),
@@ -103,3 +112,29 @@ def collect_trends(db_path, geo="IN", limit=25):
             "fetched_at": result["fetched_at"], "fetched": result["count"],
             "created": len(created), "record_ids": created,
             "note": "Trend signals are not verified demand or sales."}
+
+
+def trend_history(db_path, geo="IN", limit=100):
+    """Return saved RSS snapshots and rank movement; only collected snapshots are compared."""
+    if not isinstance(geo, str) or not re.fullmatch(r"[A-Za-z]{2}", geo):
+        raise ValueError("geo must be a two-letter country code")
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
+        raise ValueError("limit must be 1..100")
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT data_json FROM events WHERE topic='trends.snapshot' AND entity_id=? ORDER BY id DESC LIMIT ?",
+            (geo.upper(), limit)).fetchall()
+    snapshots = [json.loads(row["data_json"]) for row in reversed(rows)]
+    previous = {}
+    movement = {}
+    for snapshot in snapshots:
+        current = {item["title"]: rank for rank, item in enumerate(snapshot["items"], 1)}
+        for title, rank in current.items():
+            if title in previous:
+                movement[title] = {"previous_rank": previous[title], "latest_rank": rank,
+                                   "movement": previous[title] - rank,
+                                   "direction": "rising" if rank < previous[title] else "falling" if rank > previous[title] else "steady"}
+            previous[title] = rank
+    return {"geo": geo.upper(), "snapshots": snapshots, "snapshot_count": len(snapshots),
+            "rank_movement": movement,
+            "warning": "Rank movement compares only Aureon-collected RSS snapshots. Missing snapshots are not inferred; this is not search volume or product demand."}
