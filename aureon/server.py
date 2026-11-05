@@ -1,5 +1,6 @@
 """Local-only HTTP control plane."""
 import json
+import hashlib
 import threading
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import urlparse,parse_qs
@@ -21,6 +22,20 @@ from .command_center import dashboard_snapshot,interpret_command
 from .trends import fetch_trending_searches
 from .providers import shopify, printify
 from .worker import background_loop
+
+def _shopify_draft_payload(body):
+ title=str(body.get("title") or "").strip()
+ description=str(body.get("description") or "")
+ vendor=str(body.get("vendor") or "")[:255]
+ product_type=str(body.get("product_type") or "")[:255]
+ raw_tags=body.get("tags",[])
+ tags=[str(tag).strip()[:80] for tag in raw_tags if str(tag).strip()][:20] if isinstance(raw_tags,list) else []
+ return {"title":title,"description":description,"vendor":vendor,"product_type":product_type,"tags":tags}
+
+def _shopify_draft_key(payload):
+ raw=json.dumps(payload,sort_keys=True,separators=(",",":"),ensure_ascii=False)
+ return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
 PAGE="""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aureon</title>
 <style>:root{color-scheme:dark;font-family:system-ui;background:#0b1020;color:#e8edf7}body{max-width:1000px;margin:28px auto;padding:0 16px}
 header,.grid{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}h1{letter-spacing:-1px}.muted,small{color:#9aa8bd}
@@ -126,9 +141,22 @@ def make_handler(db_path):
    path=urlparse(self.path).path
    try:
     b=self._body()
+    if path=="/api/shopify/drafts/approval":
+     draft=_shopify_draft_payload(b)
+     approval=request_approval(db_path,"create_shopify_draft","shopify_draft",_shopify_draft_key(draft),"Approve creation of this unpublished Shopify draft")
+     return self._send(201,{"approval":approval,"draft":draft})
     if path=="/api/shopify/drafts":
-     product=shopify.create_draft_product(b.get("title"),b.get("description",""),b.get("vendor",""),b.get("product_type",""),b.get("tags",[]))
-     return self._send(201,{"product":product,"published":False,"provider":"Shopify"})
+     draft=_shopify_draft_payload(b);approval_id=b.get("approval_id")
+     if isinstance(approval_id,bool) or not isinstance(approval_id,int): raise ValueError("approval_id is required")
+     with connect(db_path) as conn:
+      conn.execute("BEGIN IMMEDIATE")
+      approval=conn.execute("SELECT * FROM approvals WHERE id=?",(approval_id,)).fetchone()
+      if approval is None or approval["status"]!="approved" or approval["action"]!="create_shopify_draft" or approval["target_type"]!="shopify_draft" or approval["target_id"]!=_shopify_draft_key(draft):
+       raise ValueError("a matching approved Shopify draft request is required")
+      changed=conn.execute("UPDATE approvals SET status='consumed' WHERE id=? AND status='approved'",(approval_id,))
+      if changed.rowcount!=1: raise ValueError("approval has already been used")
+     product=shopify.create_draft_product(draft["title"],draft["description"],draft["vendor"],draft["product_type"],draft["tags"])
+     return self._send(201,{"product":product,"published":False,"provider":"Shopify","approval_id":approval_id})
     if path=="/api/trends/collect": return self._send(202,{"job":enqueue(db_path,"trends.collect",{"geo":b.get("geo","IN"),"limit":b.get("limit",25)},b.get("idempotency_key"))})
     if path=="/api/jobs": return self._send(201,{"job":enqueue(db_path,str(b.get("kind","")),b.get("payload",{}),b.get("idempotency_key"))})
     if path=="/api/records": return self._send(201,{"record":create_record(db_path,b.get("kind"),b.get("title"),b.get("data",{}),b.get("status"))})
