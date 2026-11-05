@@ -18,7 +18,7 @@ from .finance import record_transaction,reconcile,cashflow_projection,financial_
 from .agents import submit_plan,runtime_status
 from .command_center import dashboard_snapshot,interpret_command
 from .trends import fetch_trending_searches
-from .providers import shopify
+from .providers import shopify, printify
 PAGE="""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aureon</title>
 <style>:root{color-scheme:dark;font-family:system-ui;background:#0b1020;color:#e8edf7}body{max-width:1000px;margin:28px auto;padding:0 16px}
 header,.grid{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}h1{letter-spacing:-1px}.muted,small{color:#9aa8bd}
@@ -71,7 +71,16 @@ def make_handler(db_path):
     q=parse_qs(urlparse(self.path).query)
     try: return self._send(200,fetch_trending_searches(q.get("geo",["IN"])[0]))
     except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
-   if path=="/api/providers": return self._send(200,{"runtime":"local","live_data_sources":[{"name":"Google Trends public RSS","status":"available_without_credentials"}],"commerce_integrations":[shopify.health(),{"name":"Printify","mode":"not_implemented"},{"name":"Printful","mode":"not_implemented"}]})
+   if path=="/api/providers": return self._send(200,{"runtime":"local","live_data_sources":[{"name":"Google Trends public RSS","status":"available_without_credentials"}],"commerce_integrations":[shopify.health(),printify.health(),{"name":"Printful","mode":"not_implemented"}]})
+   if path=="/api/printify/shops":
+    try: return self._send(200,{"shops":printify.shops()})
+    except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
+   if path=="/api/printify/blueprints":
+    try: return self._send(200,{"blueprints":printify.blueprints()})
+    except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
+   if path.startswith("/api/printify/blueprints/") and path.endswith("/providers"):
+    try: return self._send(200,{"providers":printify.print_providers(path.split("/")[4])})
+    except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
    if path=="/api/shopify/connection":
     try: return self._send(200,{"connected":True,"shop":shopify.shop_info()})
     except (ValueError,RuntimeError) as exc: return self._send(502,{"connected":False,"error":str(exc)})
