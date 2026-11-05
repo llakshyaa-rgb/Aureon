@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from aureon.db import initialize
 from aureon.jobs import enqueue,list_jobs
@@ -14,6 +15,13 @@ class WorkerTests(unittest.TestCase):
   result=run_once(self.db)
   self.assertEqual(result["status"],"succeeded")
   self.assertEqual(list_jobs(self.db)[0]["result"]["mode"],"mock")
+ def test_transient_runtime_error_is_requeued(self):
+  enqueue(self.db,"trends.collect",{"geo":"IN","limit":1})
+  with patch("aureon.worker.collect_trends",side_effect=RuntimeError("temporary provider outage")):
+   result=run_once(self.db)
+  self.assertEqual(result["status"],"failed")
+  self.assertEqual(list_jobs(self.db)[0]["status"],"queued")
+  self.assertEqual(list_jobs(self.db)[0]["attempts"],1)
  def test_unknown_job_fails_without_loop(self):
   enqueue(self.db,"external.purchase",{})
   result=run_once(self.db)
