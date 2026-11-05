@@ -1,5 +1,5 @@
 """Period-aware management reporting over manually recorded ledger entries."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from .db import connect
 
 
@@ -15,11 +15,15 @@ def profit_and_loss(db_path, start=None, end=None, currency=None):
             if parsed.tzinfo is None:
                 parsed = parsed.replace(tzinfo=timezone.utc)
             if date_only and label == "end":
-                parsed = parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
-            return parsed.astimezone(timezone.utc).isoformat()
+                parsed = parsed + timedelta(days=1)
+            return parsed.astimezone(timezone.utc).isoformat(), date_only and label == "end"
         except ValueError:
             raise ValueError(label + " must be an ISO date or timestamp") from None
-    lower, upper = parse(start, "start"), parse(end, "end")
+    lower_result = parse(start, "start")
+    upper_result = parse(end, "end")
+    lower = lower_result[0] if lower_result else None
+    upper = upper_result[0] if upper_result else None
+    upper_exclusive = upper_result[1] if upper_result else False
     if lower and upper and lower > upper:
         raise ValueError("start must not be after end")
     if currency is not None and (not isinstance(currency, str) or len(currency) != 3 or not currency.isascii() or not currency.isalpha()):
@@ -29,7 +33,7 @@ def profit_and_loss(db_path, start=None, end=None, currency=None):
         clauses.append("created_at>=?")
         params.append(lower)
     if upper:
-        clauses.append("created_at<=?")
+        clauses.append("created_at<?" if upper_exclusive else "created_at<=?")
         params.append(upper)
     if currency:
         clauses.append("currency=?")
