@@ -46,8 +46,8 @@ def validate_svg_artwork(svg, width=4500, height=5400, safe_margin=250):
         raise ValueError("artwork must be an SVG document under 200 KB")
     lowered = svg.lower()
     if ("<script" in lowered or "javascript:" in lowered or "<foreignobject" in lowered or
-            re.search(r"\\bon[a-z]+\\s*=", lowered) or
-            re.search(r"""(?:href|xlink:href)\\s*=\\s*["']\\s*(?:https?:|//|data:text/html)""", lowered)):
+            re.search(r"\bon[a-z]+\s*=, lowered) or
+            re.search(r"""(?:href|xlink:href)\s*=\s*["']\s*(?:https?:|//|data:text/html)""", lowered)):
         raise ValueError("active scripts, event handlers and external content are not allowed in artwork")
     checks = {
         "svg_document": True,
