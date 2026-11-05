@@ -187,6 +187,10 @@ def create_collection(db_path, title, concept, styles, palette="midnight"):
         raise ValueError("collection must contain 1-5 styles")
     if any(not isinstance(style, str) for style in styles) or len(set(styles)) != len(styles):
         raise ValueError("collection styles must be unique text values")
+    if any(style.lower() not in {"orbit", "badge", "type", "botanical", "geometric"} for style in styles):
+        raise ValueError("collection contains an unsupported style")
+    if palette not in PALETTES:
+        raise ValueError("unknown palette")
     variants = []
     for index, style in enumerate(styles, 1):
         asset = create_asset(db_path, title=title + " · " + str(index), concept=concept,
