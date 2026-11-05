@@ -6,6 +6,8 @@ import json
 def _find_order_context(db_path, reference):
  if reference is None or reference=="":
   return None
+ if isinstance(reference, bool) or not isinstance(reference, (str, int)) or len(str(reference)) > 150:
+  raise ValueError("order_reference must be text or an order ID")
  with connect(db_path) as conn:
   row=None
   try:
@@ -31,6 +33,7 @@ def _find_order_context(db_path, reference):
 def open_ticket(db_path,subject,message,order_reference=None,customer_reference=None,channel="manual"):
  if channel not in {"manual","email_import","store_import","marketplace_import"}:raise ValueError("unsupported channel")
  if not isinstance(message,str) or not message.strip() or len(message)>5000:raise ValueError("message must be 1-5000 characters")
+ if customer_reference is not None and (not isinstance(customer_reference,(str,int)) or isinstance(customer_reference,bool) or len(str(customer_reference))>150):raise ValueError("customer_reference must be at most 150 characters")
  context=_find_order_context(db_path,order_reference)
  status=context.get("fulfillment_status") or context.get("order_status") if context and context.get("matched") else None
  result=triage_support_ticket(subject,message,status)
@@ -79,7 +82,7 @@ def draft_contextual_response(db_path, ticket_id):
   reply="Our recorded order status shows this order is in production. We will share a further update when verified dispatch information is available."
  elif context.get("fulfillment_status")=="delayed":
   reply="Our records flag this order as delayed. We are checking the latest fulfilment details and will update you when confirmed."
- elif context.get("fulfillment_status")=="cancelled":
+ elif context.get("fulfillment_status")=="cancelled" or context.get("order_status")=="cancelled":
   reply="Our records show this order was cancelled. If you need help with the next steps, please let us know."
  else:
   reply="Thanks for reaching out. We are checking the recorded order status and will follow up with verified information."
