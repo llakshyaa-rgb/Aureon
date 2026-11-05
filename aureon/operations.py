@@ -65,7 +65,8 @@ def update_tracking(db_path,order_id,tracking_code,fulfillment_status):
         order=_get_order(conn,order_id);data=order["data"]
         if data.get("supplier_order_status")!="submitted": raise ValueError("cannot update fulfillment before approved supplier submission")
         current=data.get("fulfillment_status")
-        if fulfillment_status not in allowed.get(current,{"in_production","cancelled"}): raise ValueError("invalid fulfillment status transition")
+        allowed_next={"in_production","cancelled"} if current is None else allowed.get(current,set())
+        if fulfillment_status not in allowed_next: raise ValueError("invalid fulfillment status transition")
         if fulfillment_status in {"shipped","delivered"} and (not isinstance(tracking_code,str) or not tracking_code.strip()):
             raise ValueError("tracking code is required for shipped or delivered orders")
         data["tracking"]=tracking_code.strip()[:200] if isinstance(tracking_code,str) and tracking_code.strip() else data.get("tracking")
@@ -80,6 +81,8 @@ def update_tracking(db_path,order_id,tracking_code,fulfillment_status):
 def request_refund_review(db_path,order_id,amount,reason):
     if isinstance(amount,bool) or not isinstance(amount,(int,float)) or not math.isfinite(amount) or amount<=0:
         raise ValueError("refund amount must be positive and finite")
+    amount=round(float(amount),2)
+    if amount<=0: raise ValueError("refund amount must be at least 0.01")
     if not isinstance(reason,str) or not reason.strip(): raise ValueError("refund reason is required")
     with connect(db_path) as conn:
         order=_get_order(conn,order_id)
@@ -87,5 +90,5 @@ def request_refund_review(db_path,order_id,amount,reason):
         if amount>order["data"]["total_supplier_cost"]: raise ValueError("refund exceeds recorded supplier cost")
         if conn.execute("SELECT 1 FROM approvals WHERE action=? AND target_type=? AND target_id=? AND status=?",( "issue_refund","order",str(order_id),"pending")).fetchone(): raise ValueError("a refund review is already pending for this order")
         cur=conn.execute("INSERT INTO approvals(action,target_type,target_id,amount,currency,reason) VALUES(?,?,?,?,?,?)",
-          ("issue_refund","order",str(order_id),round(float(amount),2),order["data"]["currency"],reason.strip()[:1000]))
+          ("issue_refund","order",str(order_id),amount,order["data"]["currency"],reason.strip()[:1000]))
         return dict(conn.execute("SELECT * FROM approvals WHERE id=?",(cur.lastrowid,)).fetchone())
