@@ -21,7 +21,7 @@ Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C. The dashboard s
 
 - Persistent product, opportunity, design, listing, supplier, order, support and campaign records.
 - Unit economics and POD/dropshipping comparisons from explicit cost assumptions.
-- Manual supplier quote capture and destination/currency-matched landed-cost comparison.
+- Manual supplier quote capture, destination/currency-matched landed-cost comparison and sample-aware operator-entered supplier scorecards.
 - Editable SVG creative studio with five visual styles, five palettes, saved assets, multi-style collections and basic print-size/safe-area checks.
 - Persistent A/B marketing experiments with per-variant metrics and descriptive comparison.
 - Competitor observation analysis, integrated opportunity scoring from source evidence, competitor observations and unit economics, pricing sensitivity and break-even scenarios.
@@ -61,7 +61,7 @@ A provider token being present only means credentials are configured. Use the da
 - POST /api/orders/prepare-from-quote
 - GET /api/overview, GET /api/jobs, GET/POST /api/records, PATCH /api/records/{id}
 - POST /api/opportunities/assess
-- GET/POST /api/suppliers, POST /api/suppliers/{id}/quotes, GET /api/suppliers/compare
+- GET/POST /api/suppliers, POST /api/suppliers/{id}/quotes and /performance, GET /api/suppliers/{id}/scorecard and /api/suppliers/compare
 - POST /api/orders and order approval, simulated submission, tracking and refund-review routes
 - GET /api/campaigns/metrics, POST /api/campaigns/{id}/metrics
 - GET/POST /api/schedules, POST /api/schedules/run-due
