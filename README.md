@@ -30,7 +30,7 @@ Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C. The dashboard s
 - Simulated order lifecycle with exact amount/currency approval checks. No supplier order is actually placed.
 - Campaign metrics: CTR, conversion, CPA and ROAS.
 - Finance ledger, manual reconciliation and scenario cash-flow projections.
-- Durable jobs, idempotency, retries, interrupted-job recovery and local background processing.
+- Durable jobs, idempotency, retries, interrupted-job recovery and local background processing.\n- Automatic daily integrity-checked SQLite backups with seven-backup rotation, manual backup and verified restore commands.
 - Dependency-aware, allowlisted agent plans with prior-step output references; no shell execution or arbitrary code execution.
 
 ## Live integrations
@@ -59,7 +59,7 @@ A provider token being present only means credentials are configured. Use the da
 - POST /api/marketing/experiments, POST /api/marketing/experiments/{id}/observations, GET /api/marketing/experiments/{id}
 - GET /api/trends/history, GET /api/finance/profit-and-loss
 - POST /api/orders/prepare-from-quote
-- GET /api/overview, GET /api/jobs, GET/POST /api/records, PATCH /api/records/{id}
+- GET /api/backups, POST /api/backups\n- GET /api/overview, GET /api/jobs, GET/POST /api/records, PATCH /api/records/{id}
 - POST /api/opportunities/assess
 - GET/POST /api/suppliers, POST /api/suppliers/{id}/quotes and /performance, GET /api/suppliers/{id}/scorecard and /api/suppliers/compare
 - POST /api/orders and order approval, simulated submission, tracking and refund-review routes
