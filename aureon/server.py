@@ -35,7 +35,8 @@ def _shopify_draft_payload(body):
  return {"title":title,"description":description,"vendor":vendor,"product_type":product_type,"tags":tags}
 
 def _shopify_draft_key(payload):
- raw=json.dumps(payload,sort_keys=True,separators=(",",":"),ensure_ascii=False)
+ store,_token=shopify.configured()
+ raw=json.dumps({"store":store,"payload":payload},sort_keys=True,separators=(",",":"),ensure_ascii=False)
  return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 def _printify_draft_key(shop_id, product):
