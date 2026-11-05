@@ -2,7 +2,7 @@
 import uuid,json
 from .db import connect,json_dump
 from .jobs import enqueue
-ALLOWED={"design.brief":{"niche","audience","product_type","style","concept"},"listing.draft":{"product","audience","keywords"},"support.triage":{"subject","message"},"marketing.draft":{"product_title","audience","channel","benefit","call_to_action"},"economics.calculate":{"channel","selling_price","product_cost"},"opportunity.assess":{"title","evidence","signals"},"campaign.metrics":{"metrics"}}
+ALLOWED={"design.brief":{"niche","audience","product_type","style","concept"},"listing.draft":{"product","audience","keywords"},"support.triage":{"subject","message"},"marketing.draft":{"product_title","audience","channel","benefit","call_to_action"},"economics.calculate":{"channel","selling_price","product_cost"},"opportunity.assess":{"title","evidence","signals"},"campaign.metrics":{"metrics"},"trends.collect":{"geo"}}
 def plan_run(name,tasks):
  if not isinstance(name,str) or not name.strip() or len(name)>120:raise ValueError("plan name required")
  if not isinstance(tasks,list) or not 1<=len(tasks)<=20:raise ValueError("plan must contain 1..20 tasks")
