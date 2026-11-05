@@ -16,6 +16,10 @@ class Offer:
     payment_fixed_fee: float = 0.0
     estimated_ad_cost: float = 0.0
     other_costs: float = 0.0
+    duty_cost: float = 0.0
+    tax_rate: float = 0.0
+    return_rate: float = 0.0
+    chargeback_rate: float = 0.0
     currency: str = "USD"
 
     def validate(self):
@@ -24,7 +28,8 @@ class Offer:
         names = (
             "selling_price", "product_cost", "shipping_cost", "packaging_cost",
             "platform_fee_rate", "payment_fee_rate", "payment_fixed_fee",
-            "estimated_ad_cost", "other_costs",
+            "estimated_ad_cost", "other_costs", "duty_cost",
+            "tax_rate", "return_rate", "chargeback_rate",
         )
         for name in names:
             value = getattr(self, name)
@@ -32,8 +37,9 @@ class Offer:
                 raise ValueError(name + " must be finite and non-negative")
         if self.selling_price <= 0:
             raise ValueError("selling_price must be greater than zero")
-        if self.platform_fee_rate > 1 or self.payment_fee_rate > 1:
-            raise ValueError("fee rates must be fractions between 0 and 1")
+        if any(getattr(self, name) > 1 for name in
+               ("platform_fee_rate", "payment_fee_rate", "tax_rate", "return_rate", "chargeback_rate")):
+            raise ValueError("fee, tax, return and chargeback rates must be fractions between 0 and 1")
         if not isinstance(self.currency, str) or not re.fullmatch(r"[A-Za-z]{3}", self.currency):
             raise ValueError("currency must be a three-letter code")
 
@@ -42,10 +48,15 @@ def calculate_unit_economics(offer):
     offer.validate()
     platform_fee = offer.selling_price * offer.platform_fee_rate
     payment_fee = offer.selling_price * offer.payment_fee_rate + offer.payment_fixed_fee
-    fulfilment = offer.product_cost + offer.shipping_cost + offer.packaging_cost
-    total = fulfilment + platform_fee + payment_fee + offer.estimated_ad_cost + offer.other_costs
+    fulfilment = offer.product_cost + offer.shipping_cost + offer.packaging_cost + offer.duty_cost
+    estimated_tax = offer.selling_price * offer.tax_rate
+    return_reserve = offer.selling_price * offer.return_rate
+    chargeback_reserve = offer.selling_price * offer.chargeback_rate
+    total = (fulfilment + platform_fee + payment_fee + estimated_tax + return_reserve +
+             chargeback_reserve + offer.estimated_ad_cost + offer.other_costs)
     profit = offer.selling_price - total
-    break_even = max(0.0, offer.selling_price - fulfilment - platform_fee - payment_fee - offer.other_costs)
+    break_even = max(0.0, offer.selling_price - fulfilment - platform_fee - payment_fee -
+                     estimated_tax - return_reserve - chargeback_reserve - offer.other_costs)
     return {
         "channel": offer.channel,
         "currency": offer.currency.upper(),
@@ -53,6 +64,10 @@ def calculate_unit_economics(offer):
         "fulfilment_cost": round(fulfilment, 2),
         "platform_fee": round(platform_fee, 2),
         "payment_fee": round(payment_fee, 2),
+        "estimated_tax": round(estimated_tax, 2),
+        "return_reserve": round(return_reserve, 2),
+        "chargeback_reserve": round(chargeback_reserve, 2),
+        "duty_cost": round(offer.duty_cost, 2),
         "advertising_cost": round(offer.estimated_ad_cost, 2),
         "other_costs": round(offer.other_costs, 2),
         "total_cost": round(total, 2),
@@ -62,7 +77,8 @@ def calculate_unit_economics(offer):
         "profitable_before_ads": profit + offer.estimated_ad_cost > 0,
         "assumptions": [
             "All inputs use the same currency.",
-            "Taxes, duties, refunds, chargebacks and FX are excluded unless entered as other_costs.",
+            "Tax, duty, return and chargeback reserves are estimates supplied by the operator.",
+            "FX, tax treatment and statutory duties must be verified for each market.",
             "Supplier and platform fees are estimates until verified with live quotes.",
         ],
     }
