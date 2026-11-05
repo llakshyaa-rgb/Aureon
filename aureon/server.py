@@ -28,6 +28,7 @@ from .intelligence.economics import Offer
 from .intelligence.scenarios import pricing_scenarios,break_even_orders
 from .intelligence.product_research import analyze_competition
 from .finance_reports import profit_and_loss
+from .experiments import create_experiment,record_variant_observation,compare_experiment
 
 def _shopify_draft_payload(body):
  title=str(body.get("title") or "").strip()
@@ -162,6 +163,9 @@ def make_handler(db_path):
    if path=="/api/schedules": return self._send(200,{"schedules":list_scheduled(db_path)})
    if path=="/api/support": return self._send(200,support_queue(db_path))
    if path=="/api/marketing/campaigns": return self._send(200,{"campaigns":campaign_overview(db_path)})
+   if path.startswith("/api/marketing/experiments/"):
+    try: return self._send(200,compare_experiment(db_path,int(path.split("/")[4])))
+    except ValueError as exc: return self._send(400,{"error":str(exc)})
    if path=="/api/finance/dashboard": return self._send(200,financial_dashboard(db_path))
    if path=="/api/finance/profit-and-loss":
     q=parse_qs(urlparse(self.path).query)
@@ -262,6 +266,11 @@ def make_handler(db_path):
      tid=int(path.split("/")[3]);return self._send(200,draft_response(db_path,tid,b.get("response","")))
     if path.startswith("/api/support/") and path.endswith("/notes"):
      tid=int(path.split("/")[3]);return self._send(200,add_internal_note(db_path,tid,b.get("note",""),b.get("author","operator")))
+    if path=="/api/marketing/experiments":
+     return self._send(201,{"experiment":create_experiment(db_path,b.get("name"),b.get("hypothesis"),b.get("channel"),b.get("variants"))})
+    if path.startswith("/api/marketing/experiments/") and path.endswith("/observations"):
+     experiment_id=int(path.split("/")[4])
+     return self._send(201,{"observation":record_variant_observation(db_path,experiment_id,b.get("variant_key"),b.get("metrics",{}))})
     if path=="/api/marketing/campaigns": return self._send(201,{"campaign":create_campaign(db_path,b.get("name",""),b.get("product_title",""),b.get("audience",""),b.get("channel",""),b.get("benefit",""),b.get("call_to_action",""),b.get("budget"),b.get("currency","USD"))})
     if path.startswith("/api/marketing/campaigns/") and path.endswith("/approval"):
      cid=int(path.split("/")[4]);return self._send(201,{"approval":request_campaign_approval(db_path,cid,b.get("action",""),b.get("amount"),b.get("reason","Human review required"))})
