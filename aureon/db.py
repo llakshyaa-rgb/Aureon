@@ -7,9 +7,19 @@ from pathlib import Path
 SCHEMA_VERSION = 1
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """Keep sqlite's transaction context semantics, but always release the handle."""
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 def connect(path: Path):
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path), timeout=15)
+    conn = sqlite3.connect(str(path), timeout=15, factory=_ClosingConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -57,6 +67,17 @@ def initialize(path: Path):
             status TEXT NOT NULL DEFAULT 'draft', data_json TEXT NOT NULL DEFAULT '{}',
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         );
+        CREATE TABLE IF NOT EXISTS scheduled_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            run_at TEXT NOT NULL,
+            idempotency_key TEXT UNIQUE,
+            status TEXT NOT NULL DEFAULT 'scheduled',
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            enqueued_job_id INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS idx_scheduled_due ON scheduled_jobs(status, run_at);
         """)
         conn.execute(
             "INSERT OR REPLACE INTO schema_meta(key,value) VALUES('schema_version',?)",
