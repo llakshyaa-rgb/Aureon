@@ -46,6 +46,27 @@ class PrintifyProviderTests(unittest.TestCase):
         self.assertIs(payload["visible"], False)
         self.assertEqual(payload["variants"][0]["id"], 45740)
 
+    def test_create_product_forces_hidden_visibility(self):
+        product = {
+            "title": "Test",
+            "blueprint_id": 384,
+            "print_provider_id": 1,
+            "variants": [{"id": 45740, "price": 1200, "is_enabled": True}],
+            "print_areas": [{
+                "variant_ids": [45740],
+                "placeholders": [{
+                    "position": "front", "decoration_method": "dtg",
+                    "images": [{"id": "uploaded-image-id"}],
+                }],
+            }],
+            "visible": True,
+        }
+        with patch.dict(os.environ, {"AUREON_PRINTIFY_API_TOKEN": "token"}):
+            with patch.object(printify, "request", return_value={"id": "product-1", "visible": False}) as call:
+                result = printify.create_product(12, product)
+        self.assertFalse(result["visible"])
+        self.assertFalse(call.call_args.kwargs["body"]["visible"])
+
     def test_print_area_cannot_reference_unknown_variant(self):
         product = {
             "title": "Test",
