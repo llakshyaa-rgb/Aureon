@@ -214,5 +214,5 @@ def create_product(shop_id, product):
     if not isinstance(result, dict) or not result.get("id"):
         raise RuntimeError("Printify did not confirm product creation.")
     if result.get("visible") is True:
-        raise RuntimeError("Printify returned a visible product despite Aureon's hidden-product request; verify it in Printify immediately.")
+        raise RuntimeError("Printify created product " + str(result.get("id")) + " but returned visible=true despite Aureon's hidden-product request; verify it in Printify immediately.")
     return result
