@@ -4,6 +4,7 @@ from datetime import datetime,timezone
 from urllib.parse import urlparse
 from .workflows import create_record,list_records
 from .db import connect,json_dump
+from .operations import create_order
 def add_supplier(db_path,name,provider,product_type,website=None,notes=""):
  for label,value,limit in (("name",name,200),("provider",provider,80),("product_type",product_type,100)):
   if not isinstance(value,str) or not value.strip() or len(value)>limit:raise ValueError(label+" is required and must be <= "+str(limit)+" characters")
@@ -54,3 +55,41 @@ def compare_supplier_quotes(db_path,product_type,destination,currency):
  candidates.sort(key=lambda x:(x["landed_cost"],x["age_days"]))
  return {"quotes":candidates,"best_quote":candidates[0] if candidates else None,
  "warning":"Quotes are user-supplied and unverified. Freshness is based on quote timestamp, not supplier confirmation. Confirm stock, quality, shipping, duties, taxes and current price."}
+
+
+def prepare_order_from_best_quote(db_path, product_title, quantity, product_type, destination, currency):
+    """Prepare a simulated purchase order from the lowest comparable manual quote."""
+    if isinstance(quantity, bool) or not isinstance(quantity, int) or not 1 <= quantity <= 10000:
+        raise ValueError("quantity must be 1..10000")
+    comparison = compare_supplier_quotes(db_path, product_type, destination, currency)
+    best = comparison["best_quote"]
+    if best is None:
+        raise ValueError("no comparable supplier quote exists for this product, destination and currency")
+    quote = best["quote"]
+    total = round(quantity * quote["product_cost"] + quote["shipping_cost"], 2)
+    blended_unit_cost = total / quantity
+    order = create_order(db_path, product_title, quantity, blended_unit_cost, currency, best["supplier_id"])
+    data = order["data"]
+    data.update({"supplier_cost_breakdown": {
+        "product_cost_per_unit": quote["product_cost"],
+        "shipping_total": quote["shipping_cost"],
+        "total_landed_supplier_cost": total,
+        "currency": currency.upper(),
+        "destination": destination,
+        "quote_timestamp": quote["quoted_at"],
+        "quote_freshness": best["freshness"],
+        "supplier_verification": best["status"],
+        "supplier_id": best["supplier_id"],
+        "source": "operator-entered supplier quote"
+    }})
+    with connect(db_path) as conn:
+        conn.execute("UPDATE workspace_records SET data_json=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
+                     (json_dump(data), order["id"]))
+        conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
+                     ("order.prepared_from_quote", "order", str(order["id"]),
+                      json_dump({"supplier_id": best["supplier_id"], "quote_freshness": best["freshness"],
+                                 "total_cost": total, "currency": currency.upper()})))
+    order["data"] = data
+    return {"order": order, "selected_quote": best,
+            "approval_required_before_supplier_submission": True,
+            "warning": comparison["warning"]}
