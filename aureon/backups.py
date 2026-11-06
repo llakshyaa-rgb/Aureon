@@ -1,6 +1,8 @@
 """Verified local SQLite backups with bounded retention."""
 import os
 import sqlite3
+import shutil
+import tempfile
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
@@ -71,18 +73,30 @@ def restore_backup(db_path, backup_path, backup_dir=None):
     if not source.is_file() or target.resolve() == source.resolve():
         raise ValueError("a different existing backup file is required")
     _check(source)
-    safety = backup_database(target, backup_dir) if target.exists() else None
     target.parent.mkdir(parents=True, exist_ok=True)
-    temp = target.with_name(target.name + ".restore.tmp")
+
+    # Keep the selected backup safe while the pre-restore backup enforces
+    # retention; otherwise retention could delete the very file being restored.
+    protected_fd, protected_name = tempfile.mkstemp(
+        prefix=".aureon-restore-source-", suffix=".sqlite3", dir=str(target.parent))
+    os.close(protected_fd)
+    protected = Path(protected_name)
+    restore_fd, restore_name = tempfile.mkstemp(
+        prefix=".aureon-restore-target-", suffix=".sqlite3", dir=str(target.parent))
+    os.close(restore_fd)
+    temp = Path(restore_name)
+    safety = None
     try:
-        with closing(sqlite3.connect(str(source))) as src, closing(sqlite3.connect(str(temp))) as dst:
+        shutil.copy2(source, protected)
+        safety = backup_database(target, backup_dir) if target.exists() else None
+        with closing(sqlite3.connect(str(protected))) as src, closing(sqlite3.connect(str(temp))) as dst:
             src.backup(dst)
             dst.commit()
         _check(temp)
         os.replace(temp, target)
     finally:
-        if temp.exists():
-            temp.unlink()
+        protected.unlink(missing_ok=True)
+        temp.unlink(missing_ok=True)
     for suffix in ("-wal", "-shm"):
         sidecar = Path(str(target) + suffix)
         if sidecar.exists():
