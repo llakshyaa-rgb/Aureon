@@ -14,7 +14,7 @@ class WorkerTests(unittest.TestCase):
   enqueue(self.db,"design.brief",{"niche":"space","audience":"students","product_type":"tee","style":"minimal","concept":"planets"})
   result=run_once(self.db)
   self.assertEqual(result["status"],"succeeded")
-  self.assertEqual(list_jobs(self.db)[0]["result"]["mode"],"mock")
+  self.assertEqual(list_jobs(self.db)[0]["result"]["mode"],"local")
  def test_transient_runtime_error_is_requeued(self):
   enqueue(self.db,"trends.collect",{"geo":"IN","limit":1})
   with patch("aureon.worker.collect_trends",side_effect=RuntimeError("temporary provider outage")):
