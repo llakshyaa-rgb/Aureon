@@ -32,6 +32,21 @@ pre{white-space:normal;overflow-wrap:anywhere;color:var(--ink);font:inherit;marg
 .runtime-state.succeeded{background:#e8f5ed;color:#237447}.runtime-state.failed{background:#fbeaea;color:#a33b3b}.runtime-state.running{background:#e8f0ff;color:#285fc2}
 .runtime-steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .runtime-step{font-size:10px;border:1px solid var(--line);border-radius:7px;padding:5px 7px;color:#596273;background:var(--paper)}
+.record-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:12px}
+.record-card{min-width:0;background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px;box-shadow:0 3px 12px rgba(17,24,39,.035)}
+.record-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.record-kind{font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:750;color:var(--muted)}
+.record-card h3{font-size:14px;line-height:1.4;margin:12px 0 5px;overflow-wrap:anywhere}
+.record-card p{font-size:11px;color:var(--muted);margin:0;overflow-wrap:anywhere}
+.status-pill{display:inline-flex;align-items:center;border-radius:30px;padding:5px 9px;font-size:10px;font-weight:750;background:#edf1f7;color:#4b5563;white-space:nowrap}
+.status-succeeded,.status-approved,.status-completed,.status-resolved{background:#e7f5ed;color:#237447}
+.status-failed,.status-rejected,.status-cancelled{background:#fbeaea;color:#a33b3b}
+.status-running,.status-in_transit,.status-processing{background:#e8f0ff;color:#285fc2}
+.status-pending,.status-queued,.status-draft{background:#fff3dc;color:#8a5b12}
+.compact-list{display:grid;gap:8px;margin-top:12px}
+.compact-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:#fff}
+.compact-row strong,.compact-row small{display:block}.compact-row strong{font-size:12px}.compact-row small{font-size:10px;color:var(--muted);margin-top:4px}
+@media(max-width:520px){.record-grid{grid-template-columns:1fr}.record-card{padding:12px}.compact-row{padding:10px 11px}}
 @media(max-width:850px){.section-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;margin-top:-4px}.section-tab{white-space:nowrap;flex:0 0 auto}.runtime-heading{flex-direction:column}.runtime-heading button{width:100%}}.pm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px;margin-top:16px}.pm-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff;min-width:0}.pm-card-head{display:flex;justify-content:space-between;align-items:center}.pm-card h3{margin:14px 0 7px}.pm-price{font-size:22px;font-weight:750;letter-spacing:-.04em}.pm-card p{font-size:12px;color:var(--muted);min-height:36px}.pm-meta{font-size:11px;color:var(--muted);margin:12px 0}.pm-card button{width:100%}.pm-editor{margin-top:22px;padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--paper)}.pm-editor[hidden]{display:none}.pm-editor h3{margin-top:0}
 @media(max-width:850px){.app-shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative;padding:14px;gap:12px}.brand{padding:4px}.nav-list{display:flex;overflow-x:auto;padding-bottom:4px}.nav-label,.sidebar-foot{display:none}.nav-item{white-space:nowrap;flex:0 0 auto;padding:9px 12px}.main{padding:20px 14px 40px}.topbar{margin-bottom:18px}.page-section{border-radius:14px}}
 </style></head><body><div class="app-shell"><aside class="sidebar">
@@ -91,6 +106,13 @@ function renderAgentRuntime(data){
  }).join(""):'<div class="empty">No agent runs recorded yet. Run a supervised workflow to see it here.</div>';
  box.innerHTML='<div class="runtime-summary">'+stats+'<article class="runtime-stat"><span>Total active/history jobs</span><strong>'+total+'</strong></article></div><div class="result-note">Execution: '+escapeHTML(data.execution||"Local worker")+' · Shell execution: '+(data.shell_execution===false?"Disabled":"Not specified")+' · External side effects: '+(data.external_side_effects===false?"Disabled":"Not specified")+'</div><h3>Recent agent runs</h3><div class="runtime-run-list">'+runCards+'</div>';
 }
+function statusPill(status){const value=String(status||"unknown").toLowerCase().replace(/[^a-z0-9_-]/g,"");return '<span class="status-pill status-'+value+'">'+escapeHTML(String(status||"Unknown").replaceAll("_"," "))+'</span>'}
+function humanLabel(value){return String(value||"").replaceAll("_"," ").replace(/\\b\\w/g,c=>c.toUpperCase())}
+function renderRecordCards(rows){if(!rows.length)return '<div class="empty">No workspace records yet.</div>';return '<div class="record-grid">'+rows.map(x=>'<article class="record-card"><div class="record-card-top"><span class="record-kind">'+escapeHTML(humanLabel(x.kind))+'</span>'+statusPill(x.status)+'</div><h3>'+escapeHTML(x.title||("Record #"+x.id))+'</h3><p>Record #'+escapeHTML(x.id)+'</p></article>').join("")+'</div>'}
+function renderJobCards(rows){if(!rows.length)return '<div class="empty">No jobs in the queue.</div>';return '<div class="compact-list">'+rows.map(x=>'<article class="compact-row"><div><strong>'+escapeHTML(humanLabel(x.kind))+'</strong><small>Job #'+escapeHTML(x.id)+'</small></div>'+statusPill(x.status)+'</article>').join("")+'</div>'}
+function renderSupportCards(rows){if(!rows.length)return '<div class="empty">No support tickets.</div>';return '<div class="record-grid">'+rows.map(x=>'<article class="record-card"><div class="record-card-top"><span class="record-kind">Ticket #'+escapeHTML(x.id)+'</span>'+statusPill(x.status)+'</div><h3>'+escapeHTML(x.title||x.data?.subject||"Customer request")+'</h3><p>'+escapeHTML(humanLabel(x.data?.priority||"Normal priority"))+' · '+escapeHTML(x.data?.channel||"Manual")+'</p></article>').join("")+'</div>'}
+function renderCampaignCards(rows){if(!rows.length)return '<div class="empty">No campaigns created yet.</div>';return '<div class="record-grid">'+rows.map(x=>'<article class="record-card"><div class="record-card-top"><span class="record-kind">'+escapeHTML(humanLabel(x.channel||"Campaign"))+'</span>'+statusPill(x.status)+'</div><h3>'+escapeHTML(x.name||"Untitled campaign")+'</h3><p>'+escapeHTML(x.product_title||"No product linked")+'</p></article>').join("")+'</div>'}
+function renderApprovalCards(rows){if(!rows.length)return '<div class="empty">No approvals waiting for review.</div>';return '<div class="compact-list">'+rows.map(x=>'<article class="compact-row"><div><strong>'+escapeHTML(humanLabel(x.action))+'</strong><small>Approval #'+escapeHTML(x.id)+' · '+escapeHTML(humanLabel(x.target_type))+' #'+escapeHTML(x.target_id)+'</small></div>'+statusPill(x.status)+'</article>').join("")+'</div>'}
 function escapeHTML(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function renderData(value){if(value===null||value===undefined)return '<p class="empty">No data available.</p>';if(Array.isArray(value)){if(!value.length)return '<p class="empty">No entries yet.</p>';return '<div class="data-grid">'+value.map((item,i)=>'<article class="data-card"><h4>Entry '+(i+1)+'</h4>'+renderData(item)+'</article>').join('')+'</div>'}if(typeof value==="object"){const entries=Object.entries(value);if(!entries.length)return '<p class="empty">No details available.</p>';return '<div class="data-list">'+entries.map(([k,v])=>'<div class="data-row"><span>'+escapeHTML(k.replaceAll("_"," "))+'</span><b>'+(v&&typeof v==="object"?renderData(v):escapeHTML(v))+'</b></div>').join('')+'</div>'}return '<span>'+escapeHTML(value)+'</span>'}
 const WORKSPACE_GROUPS={
@@ -167,11 +189,11 @@ async function addFinance(){try{const d=await post('/api/finance',{entry_type:do
 async function refresh(){try{const [o,f,r,j,s,m,a,g]=await Promise.all([get('/api/overview'),get('/api/finance'),get('/api/records'),get('/api/jobs'),get('/api/support'),get('/api/marketing/campaigns'),get('/api/approvals'),get('/api/agents')]);
 document.getElementById('stats').innerHTML=Object.entries(o.records).map(([k,v])=>'<article class="metric-card"><span>'+escapeHTML(k.replaceAll('_',' '))+'</span><strong>'+v+'</strong><small>Saved records</small></article>').join('')||'<p class="empty">No workspace records yet.</p>';
 document.getElementById('finance').innerHTML=renderData(f.summary,null,2);
-document.getElementById('records').textContent=r.records.slice(0,15).map(x=>'#'+x.id+' · '+x.kind+' · '+x.status+' · '+x.title).join('\\n')||'No records yet.';
-document.getElementById('jobs').textContent=j.jobs.slice(0,10).map(x=>'#'+x.id+' · '+x.kind+' · '+x.status).join('\\n')||'No jobs yet.';
-document.getElementById('support').textContent=s.tickets.slice(0,12).map(x=>'#'+x.id+' · '+x.status+' · '+x.data.priority+' · '+x.title).join('\\n')||'No open tickets.';
-document.getElementById('campaigns').textContent=m.campaigns.slice(0,12).map(x=>'#'+x.id+' · '+x.status+' · '+x.channel+' · '+x.name).join('\\n')||'No campaigns.';
-document.getElementById('approvals').textContent=a.approvals.filter(x=>x.status==='pending').map(x=>'#'+x.id+' · '+x.action+' · '+x.target_type+' '+x.target_id).join('\\n')||'No pending approvals.';
+document.getElementById('records').innerHTML=renderRecordCards(r.records.slice(0,15));
+document.getElementById('jobs').innerHTML=renderJobCards(j.jobs.slice(0,10));
+document.getElementById('support').innerHTML=renderSupportCards(s.tickets.slice(0,12));
+document.getElementById('campaigns').innerHTML=renderCampaignCards(m.campaigns.slice(0,12));
+document.getElementById('approvals').innerHTML=renderApprovalCards(a.approvals.filter(x=>x.status==='pending'));
 renderAgentRuntime(g);
 }catch(e){document.getElementById('records').textContent='API unavailable: '+e}}refresh();setInterval(refresh,5000);
 document.querySelectorAll(".page-section").forEach(s=>{const h=s.querySelector("h2");if(h)s.dataset.title=h.textContent.trim()});showGroup("overview");
