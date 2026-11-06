@@ -10,6 +10,7 @@ from .db import connect,initialize
 from .jobs import enqueue,list_jobs,recover_interrupted
 from .workflows import (initialize_workspace,create_record,list_records,transition_record,
  request_approval,decide_approval,list_approvals,add_finance_entry,finance_summary)
+from .product_catalog import list_products,update_product
 from .research import save_opportunity
 from .suppliers import add_supplier,add_quote,compare_supplier_quotes,prepare_order_from_best_quote,record_supplier_performance,supplier_scorecard
 from .operations import create_order,request_supplier_order_approval,record_supplier_submission,update_tracking,request_refund_review
@@ -120,6 +121,10 @@ def make_handler(db_path):
     return self._send(200,{"jobs":{r["status"]:r["n"] for r in jobs},"records":{r["kind"]:r["n"] for r in records}})
    if path=="/api/jobs": return self._send(200,{"jobs":list_jobs(db_path)})
    if path=="/api/records": return self._send(200,{"records":list_records(db_path,parse_qs(urlparse(self.path).query).get("kind",[None])[0])})
+   if path=="/api/products":
+    q=parse_qs(urlparse(self.path).query)
+    try: return self._send(200,{"products":list_products(db_path,q.get("q",[""])[0],q.get("status",[""])[0])})
+    except ValueError as exc: return self._send(400,{"error":str(exc)})
    if path=="/api/approvals": return self._send(200,{"approvals":list_approvals(db_path)})
    if path=="/api/finance": return self._send(200,{"summary":finance_summary(db_path)})
    if path=="/api/suppliers": return self._send(200,{"suppliers":list_records(db_path,"supplier",250)})
@@ -261,6 +266,9 @@ def make_handler(db_path):
    except (ValueError,TypeError,KeyError,json.JSONDecodeError) as exc: return self._send(400,{"error":str(exc)})
   def do_PATCH(self):
    path=urlparse(self.path).path
+   if path.startswith("/api/products/"):
+    try: return self._send(200,{"product":update_product(db_path,int(path.split("/")[3]),self._body())})
+    except (ValueError,TypeError,json.JSONDecodeError) as exc: return self._send(400,{"error":str(exc)})
    if path.startswith("/api/records/"):
     try: return self._send(200,{"record":transition_record(db_path,int(path.split("/")[3]),self._body().get("status",""))})
     except (ValueError,TypeError,json.JSONDecodeError) as exc: return self._send(400,{"error":str(exc)})
