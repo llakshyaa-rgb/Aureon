@@ -59,7 +59,7 @@ pre{white-space:normal;overflow-wrap:anywhere;color:var(--ink);font:inherit;marg
 @media(max-width:520px){.record-grid{grid-template-columns:1fr}.record-card{padding:12px}.compact-row{padding:10px 11px}}
 @media(max-width:850px){.section-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;margin-top:-4px}.section-tab{white-space:nowrap;flex:0 0 auto}.runtime-heading{flex-direction:column}.runtime-heading button{width:100%}}.pm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px;margin-top:16px}.pm-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff;min-width:0}.pm-card-head{display:flex;justify-content:space-between;align-items:center}.pm-card h3{margin:14px 0 7px}.pm-price{font-size:22px;font-weight:750;letter-spacing:-.04em}.pm-card p{font-size:12px;color:var(--muted);min-height:36px}.pm-meta{font-size:11px;color:var(--muted);margin:12px 0}.pm-card button{width:100%}.pm-editor{margin-top:22px;padding:18px;border:1px solid var(--line);border-radius:15px;background:var(--paper)}.pm-editor[hidden]{display:none}.pm-editor h3{margin-top:0}
 @media(max-width:850px){.app-shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative;padding:14px;gap:12px}.brand{padding:4px}.nav-list{display:flex;overflow-x:auto;padding-bottom:4px}.nav-label,.sidebar-foot{display:none}.nav-item{white-space:nowrap;flex:0 0 auto;padding:9px 12px}.main{padding:20px 14px 40px}.topbar{margin-bottom:18px}.page-section{border-radius:14px}}
-</style></head><body><div class="app-shell"><aside class="sidebar">
+.data-table-wrap{width:100%;overflow-x:auto;margin-top:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.data-table{width:100%;border-collapse:collapse;min-width:520px;font-size:12px}.data-table th{text-align:left;background:var(--paper);color:#596273;font-size:10px;letter-spacing:.07em;text-transform:uppercase;padding:12px;border-bottom:1px solid var(--line);white-space:nowrap}.data-table td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top;max-width:280px;overflow-wrap:anywhere}.data-table tr:last-child td{border-bottom:0}.data-table tr:hover td{background:#faf9f6}.data-value-bool{display:inline-flex;padding:4px 8px;border-radius:20px;background:#edf1f7;color:#475569;font-size:10px;font-weight:700}.data-value-bool.yes{background:#e7f5ed;color:#237447}.data-value-bool.no{background:#fbeaea;color:#a33b3b}</style></head><body><div class="app-shell"><aside class="sidebar">
 <div class="brand"><div class="brand-mark">A</div><div><strong>AUREON</strong><small>Commerce workspace</small></div></div>
 <div><div class="nav-label">Workspace</div><nav class="nav-list" aria-label="Main sections">
 <button class="nav-item active" data-group="overview" onclick="showGroup('overview')"><span class="nav-dot"></span>Overview</button>
@@ -132,7 +132,24 @@ function renderSupportCards(rows){if(!rows.length)return '<div class="empty">No 
 function renderCampaignCards(rows){if(!rows.length)return '<div class="empty">No campaigns created yet.</div>';return '<div class="record-grid">'+rows.map(x=>'<article class="record-card"><div class="record-card-top"><span class="record-kind">'+escapeHTML(humanLabel(x.channel||"Campaign"))+'</span>'+statusPill(x.status)+'</div><h3>'+escapeHTML(x.name||"Untitled campaign")+'</h3><p>'+escapeHTML(x.product_title||"No product linked")+'</p></article>').join("")+'</div>'}
 function renderApprovalCards(rows){if(!rows.length)return '<div class="empty">No approvals waiting for review.</div>';return '<div class="compact-list">'+rows.map(x=>'<article class="compact-row"><div><strong>'+escapeHTML(humanLabel(x.action))+'</strong><small>Approval #'+escapeHTML(x.id)+' · '+escapeHTML(humanLabel(x.target_type))+' #'+escapeHTML(x.target_id)+'</small></div>'+statusPill(x.status)+'</article>').join("")+'</div>'}
 function escapeHTML(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function renderData(value){if(value===null||value===undefined)return '<p class="empty">No data available.</p>';if(Array.isArray(value)){if(!value.length)return '<p class="empty">No entries yet.</p>';return '<div class="data-grid">'+value.map((item,i)=>'<article class="data-card"><h4>Entry '+(i+1)+'</h4>'+renderData(item)+'</article>').join('')+'</div>'}if(typeof value==="object"){const entries=Object.entries(value);if(!entries.length)return '<p class="empty">No details available.</p>';return '<div class="data-list">'+entries.map(([k,v])=>'<div class="data-row"><span>'+escapeHTML(k.replaceAll("_"," "))+'</span><b>'+(v&&typeof v==="object"?renderData(v):escapeHTML(v))+'</b></div>').join('')+'</div>'}return '<span>'+escapeHTML(value)+'</span>'}
+function renderData(value){
+ if(value===null||value===undefined)return '<p class="empty">No data available.</p>';
+ const scalar=v=>v===null||v===undefined?'<span class="muted">—</span>':typeof v==="boolean"?'<span class="data-value-bool '+(v?'yes':'no')+'">'+(v?'Yes':'No')+'</span>':typeof v==="object"?renderData(v):escapeHTML(String(v));
+ if(Array.isArray(value)){
+  if(!value.length)return '<p class="empty">No entries yet.</p>';
+  const flat=value.every(item=>item&&typeof item==="object"&&!Array.isArray(item)&&Object.values(item).every(v=>v===null||["string","number","boolean"].includes(typeof v)));
+  if(flat){
+   const keys=[...new Set(value.flatMap(item=>Object.keys(item)))];
+   if(keys.length&&keys.length<=8)return '<div class="data-table-wrap"><table class="data-table"><thead><tr>'+keys.map(k=>'<th>'+escapeHTML(humanLabel(k))+'</th>').join("")+'</tr></thead><tbody>'+value.map(item=>'<tr>'+keys.map(k=>'<td>'+scalar(item[k])+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>';
+  }
+  return '<div class="record-grid">'+value.map((item,i)=>'<article class="record-card"><div class="record-kind">Entry '+(i+1)+'</div>'+renderData(item)+'</article>').join("")+'</div>';
+ }
+ if(typeof value==="object"){
+  const entries=Object.entries(value);if(!entries.length)return '<p class="empty">No details available.</p>';
+  return '<div class="data-list">'+entries.map(([k,v])=>'<div class="data-row"><span>'+escapeHTML(humanLabel(k))+'</span><b>'+(v&&typeof v==="object"?renderData(v):scalar(v))+'</b></div>').join("")+'</div>';
+ }
+ return scalar(value);
+}
 const WORKSPACE_GROUPS={
 overview:{label:"Overview",items:[["page-overview","Workspace overview"],["page-opportunities","Opportunity discovery"],["page-records","Recent work"]]},
 products:{label:"Products & Research",items:[["page-product-management","Product management"],["page-products","Create product"],["page-suppliers","Supplier management"],["page-printify","Printify catalog"],["page-shopify","Shopify connection"],["page-creative","Creative studio"]]},
