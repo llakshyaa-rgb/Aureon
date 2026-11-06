@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from aureon.db import initialize
 from aureon.workflows import initialize_workspace, add_finance_entry
@@ -103,7 +104,8 @@ class ExtendedCapabilityTests(unittest.TestCase):
         self.assertEqual(result["currencies"]["INR"]["actual_net"], 100)
         self.assertEqual(result["currencies"]["INR"]["estimated_net"], -30)
         self.assertIn("USD", result["currencies"])
-        daily = profit_and_loss(self.db, start="2026-11-05", end="2026-11-05")
+        today = datetime.now(timezone.utc).date().isoformat()
+        daily = profit_and_loss(self.db, start=today, end=today)
         self.assertIn("INR", daily["currencies"])
 
     def test_dependency_agent_plan_executes_output_reference(self):
