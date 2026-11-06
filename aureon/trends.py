@@ -105,7 +105,6 @@ def collect_trends(db_path, geo="IN", limit=25):
              "trend_traffic": item["traffic"], "related_news": item["news"],
              "research_status": "unvalidated_trend_signal"},
             "research")
-        )
         created.append(record["id"])
         known.add(key)
     return {"provider": result["provider"], "geo": result["geo"],
