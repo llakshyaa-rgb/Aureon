@@ -120,11 +120,13 @@ def make_handler(db_path):
    if path=="/api/trends":
     q=parse_qs(urlparse(self.path).query)
     try: return self._send(200,fetch_trending_searches(q.get("geo",["IN"])[0]))
+    except ValueError as exc: return self._send(400,{"error":str(exc)})
+    except RuntimeError as exc: return self._send(502,{"error":str(exc)})
    if path=="/api/trends/history":
     q=parse_qs(urlparse(self.path).query)
     try: return self._send(200,trend_history(db_path,q.get("geo",["IN"])[0]))
     except ValueError as exc: return self._send(400,{"error":str(exc)})
-    except (ValueError,RuntimeError) as exc: return self._send(502,{"error":str(exc)})
+    except RuntimeError as exc: return self._send(502,{"error":str(exc)})
    if path=="/api/providers": return self._send(200,{"runtime":"local","live_data_sources":[{"name":"Google Trends public RSS","status":"available_without_credentials"}],"commerce_integrations":[shopify.health(),printify.health(),{"name":"Printful","mode":"not_implemented"}]})
    if path=="/api/printify/shops":
     try: return self._send(200,{"shops":printify.shops()})
