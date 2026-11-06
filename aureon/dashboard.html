@@ -32,6 +32,16 @@ pre{white-space:normal;overflow-wrap:anywhere;color:var(--ink);font:inherit;marg
 .runtime-state.succeeded{background:#e8f5ed;color:#237447}.runtime-state.failed{background:#fbeaea;color:#a33b3b}.runtime-state.running{background:#e8f0ff;color:#285fc2}
 .runtime-steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .runtime-step{font-size:10px;border:1px solid var(--line);border-radius:7px;padding:5px 7px;color:#596273;background:var(--paper)}
+.finance-currency-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.finance-currency-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff}
+.finance-currency-head{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:11px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}
+.finance-currency-head small{font-size:10px;font-weight:500;letter-spacing:0;text-transform:none}
+.finance-main-value{font-size:28px;line-height:1.2;font-weight:800;letter-spacing:-.04em;margin-top:15px}
+.finance-subtitle{font-size:11px;color:var(--muted);margin-top:3px}
+.finance-breakdown{display:grid;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.finance-breakdown div{display:flex;justify-content:space-between;gap:10px;font-size:11px}
+.finance-breakdown span{color:var(--muted)}.finance-breakdown b{font-variant-numeric:tabular-nums}
+.finance-footnote{font-size:11px;margin-top:12px}
 .record-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:12px}
 .record-card{min-width:0;background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px;box-shadow:0 3px 12px rgba(17,24,39,.035)}
 .record-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -108,6 +118,14 @@ function renderAgentRuntime(data){
 }
 function statusPill(status){const value=String(status||"unknown").toLowerCase().replace(/[^a-z0-9_-]/g,"");return '<span class="status-pill status-'+value+'">'+escapeHTML(String(status||"Unknown").replaceAll("_"," "))+'</span>'}
 function humanLabel(value){return String(value||"").replaceAll("_"," ").replace(/\\b\\w/g,c=>c.toUpperCase())}
+function renderFinanceSummary(summary){
+ if(!summary||!Object.keys(summary).length)return '<div class="empty">No finance entries recorded yet.</div>';
+ const currencies=Object.entries(summary);
+ return '<div class="finance-currency-grid">'+currencies.map(([currency,v])=>{
+  const money=n=>escapeHTML(Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}));
+  return '<article class="finance-currency-card"><div class="finance-currency-head"><span>'+escapeHTML(currency)+'</span><small>Ledger summary</small></div><div class="finance-main-value">'+money(v.actual_net)+'</div><div class="finance-subtitle">Actual net</div><div class="finance-breakdown"><div><span>Actual revenue</span><b>'+money(v.actual_revenue)+'</b></div><div><span>Actual costs</span><b>'+money(v.actual_cost)+'</b></div><div><span>Estimated net</span><b>'+money(v.estimated_net)+'</b></div></div></article>';
+ }).join("")+'</div><p class="muted finance-footnote">Actual and estimated entries remain separate. Amounts are grouped by currency; no FX conversion is implied.</p>';
+}
 function renderRecordCards(rows){if(!rows.length)return '<div class="empty">No workspace records yet.</div>';return '<div class="record-grid">'+rows.map(x=>'<article class="record-card"><div class="record-card-top"><span class="record-kind">'+escapeHTML(humanLabel(x.kind))+'</span>'+statusPill(x.status)+'</div><h3>'+escapeHTML(x.title||("Record #"+x.id))+'</h3><p>Record #'+escapeHTML(x.id)+'</p></article>').join("")+'</div>'}
 function renderJobCards(rows){if(!rows.length)return '<div class="empty">No jobs in the queue.</div>';return '<div class="compact-list">'+rows.map(x=>'<article class="compact-row"><div><strong>'+escapeHTML(humanLabel(x.kind))+'</strong><small>Job #'+escapeHTML(x.id)+'</small></div>'+statusPill(x.status)+'</article>').join("")+'</div>'}
 function renderSupportCards(rows){if(!rows.length)return '<div class="empty">No support tickets.</div>';return '<div class="record-grid">'+rows.map(x=>'<article class="record-card"><div class="record-card-top"><span class="record-kind">Ticket #'+escapeHTML(x.id)+'</span>'+statusPill(x.status)+'</div><h3>'+escapeHTML(x.title||x.data?.subject||"Customer request")+'</h3><p>'+escapeHTML(humanLabel(x.data?.priority||"Normal priority"))+' · '+escapeHTML(x.data?.channel||"Manual")+'</p></article>').join("")+'</div>'}
@@ -188,7 +206,7 @@ async function addFinance(){try{const d=await post('/api/finance',{entry_type:do
 
 async function refresh(){try{const [o,f,r,j,s,m,a,g]=await Promise.all([get('/api/overview'),get('/api/finance'),get('/api/records'),get('/api/jobs'),get('/api/support'),get('/api/marketing/campaigns'),get('/api/approvals'),get('/api/agents')]);
 document.getElementById('stats').innerHTML=Object.entries(o.records).map(([k,v])=>'<article class="metric-card"><span>'+escapeHTML(k.replaceAll('_',' '))+'</span><strong>'+v+'</strong><small>Saved records</small></article>').join('')||'<p class="empty">No workspace records yet.</p>';
-document.getElementById('finance').innerHTML=renderData(f.summary,null,2);
+document.getElementById('finance').innerHTML=renderFinanceSummary(f.summary);
 document.getElementById('records').innerHTML=renderRecordCards(r.records.slice(0,15));
 document.getElementById('jobs').innerHTML=renderJobCards(j.jobs.slice(0,10));
 document.getElementById('support').innerHTML=renderSupportCards(s.tickets.slice(0,12));
