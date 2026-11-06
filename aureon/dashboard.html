@@ -117,7 +117,7 @@ function renderAgentRuntime(data){
  box.innerHTML='<div class="runtime-summary">'+stats+'<article class="runtime-stat"><span>Total active/history jobs</span><strong>'+total+'</strong></article></div><div class="result-note">Execution: '+escapeHTML(data.execution||"Local worker")+' · Shell execution: '+(data.shell_execution===false?"Disabled":"Not specified")+' · External side effects: '+(data.external_side_effects===false?"Disabled":"Not specified")+'</div><h3>Recent agent runs</h3><div class="runtime-run-list">'+runCards+'</div>';
 }
 function statusPill(status){const value=String(status||"unknown").toLowerCase().replace(/[^a-z0-9_-]/g,"");return '<span class="status-pill status-'+value+'">'+escapeHTML(String(status||"Unknown").replaceAll("_"," "))+'</span>'}
-function humanLabel(value){return String(value||"").replaceAll("_"," ").replace(/\\b\\w/g,c=>c.toUpperCase())}
+function humanLabel(value){return String(value||"").replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase())}
 function renderFinanceSummary(summary){
  if(!summary||!Object.keys(summary).length)return '<div class="empty">No finance entries recorded yet.</div>';
  const currencies=Object.entries(summary);
