@@ -212,11 +212,16 @@ def _ai_work(db_path, payload, context):
     if not isinstance(analysis, dict):
         analysis = {}
     analysis.setdefault("executive_summary", "The model generated draft assets, but did not provide a complete evidence analysis.")
+    for field in ("opportunities", "risks", "recommended_next_steps", "missing_evidence"):
+        if not isinstance(analysis.get(field), list):
+            value = analysis.get(field)
+            analysis[field] = [value] if isinstance(value, str) and value.strip() else []
     analysis.setdefault("opportunities", [])
     analysis.setdefault("risks", [])
     analysis.setdefault("recommended_next_steps", [])
     analysis.setdefault("missing_evidence", [])
-    analysis.setdefault("confidence", "low")
+    if analysis.get("confidence") not in {"low", "medium", "high"}:
+        analysis["confidence"] = "low"
     data["research_analysis"] = analysis
     data["_provider"] = response["provider"]
     data["_model"] = response["model"]
@@ -422,8 +427,9 @@ def run_mission(db_path, payload):
             "break_even_ad_cost": economics["break_even_ad_cost"],
         }
     else:
-        analysis.setdefault("metrics", {})
-        analysis.setdefault("data_visuals", [])
+        # Never display model-invented metrics or charts when no calculator result exists.
+        analysis["metrics"] = {}
+        analysis["data_visuals"] = []
     analysis["financial_breakdown"] = economics or {}
     analysis["competition_assessment"] = {
         "status": "not_assessed",
