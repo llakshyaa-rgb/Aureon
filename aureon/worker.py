@@ -53,6 +53,10 @@ def process_job(job,db_path=None):
  elif kind=="product.create":
   if db_path is None:raise ValueError("database path required")
   result=create_record(db_path,"product",payload["title"],payload.get("data",{}),"draft")
+ elif kind=="commerce.mission":
+  if db_path is None:raise ValueError("database path required")
+  from .missions import run_mission
+  result=run_mission(db_path,payload)
  elif kind=="agent.run":
   if db_path is None:raise ValueError("database path required")
   plan=payload.get("plan")
