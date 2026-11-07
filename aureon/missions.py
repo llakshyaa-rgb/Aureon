@@ -92,6 +92,7 @@ def submit_mission(db_path, body):
             "INSERT INTO workspace_records(kind,status,title,data_json) VALUES('agent_run','queued',?,?)",
             (plan["name"], json_dump(plan)))
         run_id = cur.lastrowid
+        conn.execute("UPDATE jobs SET payload_json=? WHERE id=?", (json_dump({**payload, "run_id": run_id}), job["id"]))
         conn.execute(
             "INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
             ("agent.mission.queued", "agent_run", str(run_id),
@@ -159,7 +160,11 @@ def run_mission(db_path, payload):
     def step(name, fn):
         try:
             value = fn()
-            steps.append({"name": name, "status": "succeeded", "output": value})
+            if isinstance(value, dict) and value.get("status") == "not_configured":
+                steps.append({"name": name, "status": "not_configured", "output": value})
+                warnings.append(name + ": AI provider is not configured.")
+            else:
+                steps.append({"name": name, "status": "succeeded", "output": value})
             return value
         except Exception as exc:
             steps.append({"name": name, "status": "needs_attention", "error": str(exc)})
