@@ -88,6 +88,8 @@ def submit_plan(db_path, name, tasks, idempotency_key=None):
         cur = conn.execute("INSERT INTO workspace_records(kind,status,title,data_json) VALUES('agent_run','queued',?,?)",
             (plan["name"], json_dump({**plan, "idempotency_key": key, "job_ids": [job["id"]]})))
         run_id = cur.lastrowid
+        conn.execute("UPDATE jobs SET payload_json=? WHERE id=?",
+                     (json_dump({"plan": plan, "run_id": run_id}), job["id"]))
         conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
             ("agent.run.queued", "agent_run", str(run_id), json_dump({"job_ids": [job["id"]]})))
     return {"run_id": run_id, "job_ids": [job["id"]], "duplicate": False, "mode": "supervised_local"}
