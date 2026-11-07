@@ -61,6 +61,15 @@ class MissionTests(unittest.TestCase):
         self.assertTrue(result["ai_review"]["analysis"]["data_visuals"])
         self.assertEqual(result["ai_review"]["analysis"]["metrics"]["estimated_profit"], 729)
 
+    def test_mission_accepts_optional_cost_assumptions(self):
+        result = submit_mission(self.db, {**self.payload, "platform_fee_rate": 0.05,
+            "payment_fee_rate": 0.02, "estimated_ad_cost": 80, "tax_rate": 0.03})
+        self.assertFalse(result["duplicate"])
+
+    def test_rejects_invalid_fee_rate(self):
+        with self.assertRaises(ValueError):
+            submit_mission(self.db, {**self.payload, "platform_fee_rate": 1.5})
+
     def test_rejects_invalid_money_and_currency(self):
         with self.assertRaises(ValueError):
             submit_mission(self.db, {**self.payload, "selling_price": float("nan")})
