@@ -471,7 +471,7 @@ async function sendAureonChat(event){
  aureonChatHistory.push({role:"user",content:message});renderAureonConversation();saveAureonChat();
  input.value="";send.disabled=true;status.textContent="Aureon is thinking…";
  try{
-  const result=await post("/api/agents/chat",{message,history:aureonChatHistory.slice(-12)});
+  const result=await post("/api/agents/chat",{message,history:aureonChatHistory.slice(0,-1).slice(-12)});
   const meta=[result.provider,result.model].filter(Boolean).join(" · ");
   aureonChatHistory.push({role:"assistant",content:result.reply||"Done.",meta}); 
   if(result.status==="queued"){
