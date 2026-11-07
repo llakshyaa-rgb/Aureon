@@ -19,7 +19,7 @@ from .scheduler import initialize_scheduler,schedule_job,enqueue_due,list_schedu
 from .support import open_ticket,draft_response,draft_contextual_response,add_internal_note,support_queue
 from .marketing import create_campaign,request_campaign_approval,campaign_overview
 from .finance import record_transaction,reconcile,cashflow_projection,financial_dashboard
-from .agents import submit_plan,runtime_status,draft_plan
+from .agents import submit_plan,runtime_status,draft_plan,chat_command
 from .missions import submit_mission
 from .llm import public_settings,save_settings,test_connection
 from .command_center import dashboard_snapshot,interpret_command
@@ -289,6 +289,7 @@ def make_handler(db_path):
     if path=="/api/llm/settings": return self._send(200,save_settings(db_path,b))
     if path=="/api/llm/test": return self._send(200,test_connection(db_path))
     if path=="/api/missions": return self._send(202,submit_mission(db_path,b))
+    if path=="/api/agents/chat": return self._send(200,chat_command(db_path,b.get("message",""),b.get("history",[])))
     if path=="/api/agents/draft-plan": return self._send(200,draft_plan(db_path,b.get("objective",""),b.get("context",{})))
     if path=="/api/agents/plans": return self._send(201,submit_plan(db_path,b.get("name",""),b.get("tasks"),b.get("idempotency_key")))
     if path=="/api/commands/interpret": return self._send(200,interpret_command(b.get("command","")))
