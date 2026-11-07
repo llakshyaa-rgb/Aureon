@@ -129,6 +129,11 @@ def process_job(job,db_path=None):
    persist(idx,"running")
    try:
     task_payload=resolve(step["payload"])
+    # Give the long-running commerce mission the parent agent-run ID so its
+    # internal stages can checkpoint into the same durable workspace record.
+    if step["kind"] == "commerce.mission" and run_id is not None:
+     task_payload = dict(task_payload)
+     task_payload.setdefault("run_id", run_id)
     output=process_job({"kind":step["kind"],"payload":task_payload},db_path)
     outputs[idx]=output
     states[idx]="succeeded"
