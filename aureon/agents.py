@@ -105,8 +105,10 @@ def runtime_status(db_path):
             if ids:
                 marks = ",".join("?" for _ in ids)
                 states = [r["status"] for r in conn.execute("SELECT status FROM jobs WHERE id IN (" + marks + ")", ids).fetchall()]
-            status = "succeeded" if states and all(x == "succeeded" for x in states) else "failed" if any(x == "failed" for x in states) else "running" if any(x == "running" for x in states) else "queued"
+            status = data.get("progress_status") or ("succeeded" if states and all(x == "succeeded" for x in states) else "failed" if any(x == "failed" for x in states) else "running" if any(x == "running" for x in states) else "queued")
             runs.append({"id": row["id"], "status": status, "title": row["title"], "created_at": row["created_at"],
-                         "job_ids": ids, "job_statuses": states, "steps": data.get("tasks", [])})
+                         "job_ids": ids, "job_statuses": states, "steps": data.get("tasks", []),
+                         "progress": data.get("progress", []), "current_step": data.get("current_step"),
+                         "completed_steps": data.get("completed_steps", 0), "warnings": data.get("warnings", [])})
     return {"jobs": jobs, "recent_runs": runs, "execution": "dependency-aware local worker",
             "shell_execution": False, "external_side_effects": False}
