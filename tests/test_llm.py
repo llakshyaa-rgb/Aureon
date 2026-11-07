@@ -82,6 +82,19 @@ class LLMSettingsTests(unittest.TestCase):
         self.assertIn("/models/gemini-test:generateContent", request.call_args.args[0])
         self.assertIn("gemini-secret", request.call_args.args[0])
 
+    def test_openrouter_retries_a_short_non_answer_for_json_chat(self):
+        save_settings(self.db, {"provider": "openrouter", "model": "",
+            "api_key": "openrouter-secret", "temperature": 0.2, "max_tokens": 512})
+        candidates = [{"id": "free/model-one"}, {"id": "free/model-two"}]
+        first = {"choices": [{"message": {"content": '{"reply":"interests","tasks":[],"needs_input":""}'}}]}
+        second = {"choices": [{"message": {"content": '{"reply":"I will research the product opportunity and prepare the requested launch plan.","tasks":[],"needs_input":""}'}}]}
+        with patch("aureon.llm._select_openrouter_models", return_value=candidates), \
+             patch("aureon.llm._request_json", side_effect=[first, second]) as request:
+            result = generate(self.db, "system", "A" * 800, json_mode=True)
+        self.assertEqual(result["model"], "free/model-two")
+        self.assertIn("research the product opportunity", result["content"])
+        self.assertEqual(request.call_count, 2)
+
     def test_openai_compatible_generation_uses_configured_model(self):
         save_settings(self.db, {"provider": "deepseek", "model": "deepseek-chat",
             "api_key": "secret", "temperature": 0.2, "max_tokens": 512})
