@@ -147,6 +147,8 @@ def process_job(job,db_path=None):
     row=conn.execute("SELECT data_json FROM workspace_records WHERE id=? AND kind='agent_run'",(run_id,)).fetchone()
     if row:
      data=json.loads(row["data_json"]);data["current_step"]=None;data["progress_status"]=overall;data["warnings"]=warnings
+     data["step_states"]=list(states);data["step_outputs"]=list(outputs)
+     data["completed_steps"]=sum(x in {"succeeded","failed","skipped"} for x in states)
      conn.execute("UPDATE workspace_records SET status=?,data_json=? WHERE id=?",
       ("completed" if overall=="succeeded" else "completed_with_warnings" if overall=="completed_with_warnings" else "failed",json_dump(data),run_id))
 
