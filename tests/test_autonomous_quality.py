@@ -83,6 +83,18 @@ class AgentExecutionRecoveryTests(unittest.TestCase):
         self.assertEqual(first["id"], second["id"])
         self.assertNotIn("_aureon_idempotency_key", second["data"])
 
+    def test_interrupted_commerce_mission_is_requeued_for_checkpoint_resume(self):
+        from aureon.jobs import enqueue, recover_interrupted, list_jobs
+        job = enqueue(self.db, "commerce.mission", {"product_title": "Space hoodie"},
+                      "mission:resume-test", max_attempts=2)
+        with connect(self.db) as conn:
+            conn.execute("UPDATE jobs SET status='running',attempts=1 WHERE id=?", (job["id"],))
+        recovered = recover_interrupted(self.db)
+        self.assertEqual(recovered["requeued"], 1)
+        latest = list_jobs(self.db)[0]
+        self.assertEqual(latest["status"], "queued")
+        self.assertEqual(latest["attempts"], 1)
+
     def test_plan_rejects_unsupported_payload_fields(self):
         with self.assertRaises(ValueError):
             plan_run("Unsafe fields", [{"kind": "trends.collect",
