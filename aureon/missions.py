@@ -225,7 +225,7 @@ def run_mission(db_path, payload):
     result = {
         "mode": "autonomous_local_workflow",
         "ai_review": ai_review,
-        "planner": "deterministic local orchestration; no LLM is connected",
+        "planner": ("deterministic local orchestration with configured AI analyst" if isinstance(ai_review, dict) and ai_review.get("status") == "completed" else "deterministic local orchestration; no LLM is connected"),
         "product_title": payload["product_title"],
         "status": "completed_with_warnings" if warnings else "completed",
         "steps": steps,
