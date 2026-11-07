@@ -24,6 +24,7 @@ Open http://127.0.0.1:8787 on the same device. Stop with Ctrl+C. The dashboard s
 - Manual supplier quote capture, destination/currency-matched landed-cost comparison and sample-aware operator-entered supplier scorecards.
 - Editable SVG creative studio with five visual styles, five palettes, saved assets, multi-style collections and basic print-size/safe-area checks.
 - Persistent A/B marketing experiments with per-variant metrics and descriptive comparison.
+- Public HTTPS product-page observations from operator-supplied URLs, timestamped and source-linked; up to five competitor listings per commerce mission, with partial-failure reporting and price ranges grouped strictly by currency. These are listing observations, not verified demand or market-wide coverage.
 - Competitor observation analysis, integrated opportunity scoring from source evidence, competitor observations and unit economics, pricing sensitivity and break-even scenarios.
 - Period-filtered P&L reports, Google Trends rank history and order-aware support response drafts.
 - Quote-based simulated purchase-order preparation with itemized supplier and shipping costs.
@@ -95,7 +96,7 @@ A provider token being present only means credentials are configured. Use the da
 - GET /api/command-center, POST /api/commands/interpret
 
 ## Important autonomy boundaries
-Missions currently orchestrate a fixed, deterministic sequence; they are not yet a general-purpose autonomous AI that can invent and execute arbitrary plans. The optional AI analyst reviews collected context but does not choose tools or control the worker. Supplier quote data remains operator-entered, and external actions stay approval-gated or unavailable.
+Missions currently orchestrate a fixed, deterministic sequence; they are not yet a general-purpose autonomous AI that can invent and execute arbitrary plans. Competitor page research requires the operator to supply public product URLs; Aureon does not yet discover an exhaustive competitor set on its own. The optional AI analyst reviews collected context but does not choose tools or control the worker. Supplier quote data remains operator-entered, and external actions stay approval-gated or unavailable.
 
 ## Not yet a fully autonomous commerce operator
 
