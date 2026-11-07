@@ -370,6 +370,8 @@ function renderAgentRuntime(data){
  const runs=Array.isArray(data&&data.recent_runs)?data.recent_runs:[];
  const states=["queued","running","succeeded","failed"];
  const total=states.reduce((sum,key)=>sum+(Number(jobs[key])||0),0);
+ const quick=document.getElementById("commandWorkerStatus");
+ if(quick)quick.textContent=(Number(jobs.running)||0)+" running · "+(Number(jobs.queued)||0)+" queued · "+runs.length+" recent runs";
  const stats=states.map(key=>'<article class="runtime-stat"><span>'+key+' jobs</span><strong>'+((Number(jobs[key])||0))+'</strong></article>').join("");
  const runCards=runs.length?runs.map(run=>{
   const status=String(run.status||"unknown").toLowerCase();
