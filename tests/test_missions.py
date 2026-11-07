@@ -50,7 +50,7 @@ class MissionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             submit_mission(self.db, {**self.payload, "currency": "RUPEES"})
 
-    @patch("aureon.missions._ai_review", return_value={"status": "not_configured"})
+    @patch("aureon.missions._ai_work", return_value={"status": "completed", "provider": "test", "model": "test", "assets": {"listing_title": "TEST listing", "listing_description": "Draft", "tags": ["test"], "marketing_headline": "Launch", "marketing_copy": "Draft copy", "research_analysis": {}}})
     @patch("aureon.creative.create_asset", return_value={
         "record": {"id": 900}, "artwork": {"qa": {"passed": True}}})
     @patch("aureon.commerce.generate_listing_draft", return_value={
