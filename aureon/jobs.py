@@ -19,8 +19,9 @@ def enqueue(path: Path, kind: str, payload=None, idempotency_key=None, max_attem
         raise ValueError("payload must be an object")
     if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or not 1 <= max_attempts <= 10:
         raise ValueError("max_attempts must be an integer between 1 and 10")
+    # Agent plans may complete dependent writes before a crash. Never replay the whole plan.
     if kind.strip() == "agent.run":
-        max_attempts = max(2, max_attempts)
+        max_attempts = 1
     if idempotency_key is not None and (
         not isinstance(idempotency_key, str) or not idempotency_key.strip() or len(idempotency_key) > 200
     ):
@@ -70,9 +71,18 @@ def recover_interrupted(path: Path):
         conn.execute("BEGIN IMMEDIATE")
         rows = conn.execute("SELECT id,kind,attempts,max_attempts FROM jobs WHERE status='running'").fetchall()
         for row in rows:
-            resumable = row["kind"] in {"agent.run", "commerce.mission"}
+            # Agent plans are never replayed: partial task outputs may already exist.
+            # Other durable jobs retry within their explicit attempt budget.
+            resumable = row["kind"] != "agent.run"
             status = "queued" if resumable and row["attempts"] < row["max_attempts"] else "failed"
-            message = ("Recovered for safe step-level continuation; completed mission outputs are checkpointed." if row["kind"] == "commerce.mission" else "Recovered for safe step-level continuation." if row["kind"] == "agent.run" else "Recovered after process interruption." if status == "queued" else "Retry limit exhausted during process interruption.")
+            if row["kind"] == "agent.run":
+                message = "Agent plan stopped after interruption and was not replayed; inspect partial outputs before starting a new run."
+            elif row["kind"] == "commerce.mission":
+                message = "Recovered for safe step-level continuation; completed mission outputs are checkpointed."
+            elif status == "queued":
+                message = "Recovered after process interruption; retrying within the configured attempt limit."
+            else:
+                message = "Retry limit exhausted during process interruption."
             conn.execute("UPDATE jobs SET status=?,error=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
                          (status, message, row["id"]))
             conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
