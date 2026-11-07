@@ -19,7 +19,7 @@ class LLMSettingsTests(unittest.TestCase):
         public = public_settings(self.db)
         ids = {item["id"] for item in public["providers"]}
         self.assertTrue({"openai", "anthropic", "gemini", "openrouter",
-                         "groq", "deepseek", "mistral", "ollama", "custom"}.issubset(ids))
+                         "groq", "deepseek", "mistral", "ollama", "lm_studio", "nvidia", "sambanova", "siliconflow", "custom"}.issubset(ids))
 
     def test_key_is_never_returned_and_blank_preserves_existing(self):
         saved = save_settings(self.db, {
