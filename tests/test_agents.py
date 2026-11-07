@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 from aureon.agents import plan_run, chat_command
 from aureon.db import initialize
+from aureon.workflows import initialize_workspace
 
 class AgentPlanTests(unittest.TestCase):
     def mission(self):
@@ -55,6 +56,7 @@ class AgentPlanTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             db = Path(directory) / "aureon.sqlite3"
             initialize(db)
+            initialize_workspace(db)
             message = ("Create an astronomy T-shirt for students in India. "
                        "Selling price 699 INR, product cost 280 INR, shipping 60 INR. "
                        "Make the design, listing, economics and marketing drafts.")
