@@ -24,6 +24,7 @@ from .missions import submit_mission
 from .llm import public_settings,save_settings,test_connection
 from .command_center import dashboard_snapshot,interpret_command
 from .trends import fetch_trending_searches,trend_history
+from .public_pages import research_public_product_page
 from .providers import shopify, printify
 from .worker import background_loop
 from .creative import generate_vector_artwork,generate_mockup_preview,validate_svg_artwork,list_assets,create_collection
@@ -223,6 +224,10 @@ def make_handler(db_path):
      from .workflows import create_record
      record=create_record(db_path,"design",artwork["title"],{k:v for k,v in artwork.items() if k!="svg"}|{"svg":artwork["svg"],"asset_type":"vector_artwork"},"generated")
      return self._send(201,{"record":record,"artwork":artwork})
+    if path=="/api/research/public-product-page":
+     try: return self._send(201,research_public_product_page(db_path,b.get("url")))
+     except ValueError as exc: return self._send(400,{"error":str(exc)})
+     except RuntimeError as exc: return self._send(502,{"error":str(exc)})
     if path=="/api/research/competitors":
      return self._send(200,analyze_competition(b.get("observations")))
     if path=="/api/opportunities/evaluate":
