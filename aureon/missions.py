@@ -5,8 +5,11 @@ without requiring the operator to click through each feature separately.
 External publishing, spending and supplier orders are deliberately excluded.
 """
 import json
+import math
+import os
 import re
 import uuid
+from urllib.request import Request, urlopen
 from .db import connect, json_dump
 from .jobs import enqueue
 
@@ -33,7 +36,7 @@ def submit_mission(db_path, body):
         raise ValueError("geo must be a two-letter country code")
     def money(key, default=None, positive=False):
         value = body.get(key, default)
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
             raise ValueError(key + " must be a non-negative number")
         if positive and value <= 0:
             raise ValueError(key + " must be greater than zero")
@@ -95,6 +98,52 @@ def submit_mission(db_path, body):
              json_dump({"job_id": job["id"], "product_title": title})))
     return {"run_id": run_id, "job_id": job["id"], "duplicate": False,
             "mode": "autonomous_local", "message": "Mission queued for the background worker."}
+
+
+def _ai_review(context):
+    """Optional OpenAI-compatible analyst. Facts remain grounded in supplied context."""
+    base = os.getenv("AUREON_AI_BASE_URL", "").strip()
+    key = os.getenv("AUREON_AI_API_KEY", "").strip()
+    model = os.getenv("AUREON_AI_MODEL", "").strip()
+    if not (base and key and model):
+        return {"status": "not_configured",
+                "message": "No AI provider configured. Local workflows still run; no model inference is claimed."}
+    if not base.startswith("https://"):
+        raise ValueError("AUREON_AI_BASE_URL must use HTTPS")
+    url = base.rstrip("/")
+    if not url.endswith("/chat/completions"):
+        url += "/chat/completions"
+    prompt = (
+        "You are Aureon's cautious commerce analyst. Return only valid JSON with keys "
+        "executive_summary (string), opportunities (array of strings), risks (array of strings), "
+        "recommended_next_steps (array of strings), confidence (low|medium|high). "
+        "Use only the supplied context. Never invent market demand, supplier facts, sales, "
+        "prices or citations. Clearly distinguish observed data from assumptions. "
+        "If evidence is insufficient, say so. Do not recommend spending or publishing.\n\n"
+        + json.dumps(context, ensure_ascii=False)[:18000]
+    )
+    request = Request(url, data=json.dumps({
+        "model": model,
+        "temperature": 0.2,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": "Be evidence-bound, conservative and explicit about uncertainty."},
+            {"role": "user", "content": prompt},
+        ],
+    }).encode("utf-8"), headers={
+        "Authorization": "Bearer " + key,
+        "Content-Type": "application/json",
+    }, method="POST")
+    with urlopen(request, timeout=45) as response:
+        raw = json.loads(response.read(1_000_000).decode("utf-8"))
+    text = raw["choices"][0]["message"]["content"]
+    if isinstance(text, list):
+        text = "".join(part.get("text", "") for part in text if isinstance(part, dict))
+    parsed = json.loads(text)
+    if not isinstance(parsed, dict):
+        raise ValueError("AI analyst returned a non-object response")
+    return {"status": "completed", "provider": base, "model": model,
+            "analysis": parsed, "warning": "AI analysis is advisory and must not be treated as verified market evidence."}
 
 
 def run_mission(db_path, payload):
@@ -162,8 +211,15 @@ def run_mission(db_path, payload):
             draft_marketing_content(payload["product_title"], payload["audience"],
                                     "instagram", payload["concept"], "Explore the collection")))
 
+    ai_review = step("AI analyst review", lambda: _ai_review({
+        "product_title": payload["product_title"], "market_signals": trends,
+        "supplier_comparison": comparison, "unit_economics": economics,
+        "cost_assumptions": cost_source,
+    }))
+
     result = {
         "mode": "autonomous_local_workflow",
+        "ai_review": ai_review,
         "planner": "deterministic local orchestration; no LLM is connected",
         "product_title": payload["product_title"],
         "status": "completed_with_warnings" if warnings else "completed",
