@@ -199,3 +199,42 @@ def research_public_product_page(db_path, url):
         "research", idempotency_key="public-product-" + digest)
     return {"observation": observation, "record": record,
             "warning": "Observed page data only; verify the price and shipping at checkout."}
+
+
+def research_competitor_urls(db_path, urls):
+    """Collect independent public listing observations; never infer market-wide competition."""
+    if not isinstance(urls, list) or len(urls) > 5:
+        raise ValueError("urls must be a list of at most five product URLs")
+    from statistics import median
+    observed = []
+    errors = []
+    for url in urls:
+        try:
+            result = research_public_product_page(db_path, url)
+            observed.append(result["observation"])
+        except (ValueError, RuntimeError, OSError) as exc:
+            errors.append({"url": str(url)[:2048], "error": str(exc)[:300]})
+    by_currency = {}
+    for item in observed:
+        if item.get("price") is None or not item.get("currency"):
+            continue
+        by_currency.setdefault(item["currency"], []).append(item["price"])
+    benchmarks = {
+        currency: {
+            "listing_count": len(values),
+            "minimum_price": min(values),
+            "median_price": median(values),
+            "maximum_price": max(values),
+            "currency": currency,
+        }
+        for currency, values in sorted(by_currency.items())
+    }
+    return {
+        "requested": len(urls), "observed": observed, "errors": errors,
+        "price_benchmarks": {
+            "status": "observed_listing_prices" if benchmarks else "no_comparable_prices",
+            "by_currency": benchmarks,
+            "sample_size": len(observed),
+            "warning": "Only supplied URLs were observed. Listings may be stale, promotional or non-comparable; price ranges are not market-wide saturation or demand measures.",
+        },
+    }
