@@ -44,6 +44,20 @@ def submit_mission(db_path, body):
     selling_price = money("selling_price", positive=True)
     product_cost = money("product_cost")
     shipping_cost = money("shipping_cost", 0)
+    platform_fee_rate = body.get("platform_fee_rate", 0)
+    payment_fee_rate = body.get("payment_fee_rate", 0)
+    tax_rate = body.get("tax_rate", 0)
+    return_rate = body.get("return_rate", 0)
+    chargeback_rate = body.get("chargeback_rate", 0)
+    for field, value in (("platform_fee_rate", platform_fee_rate), ("payment_fee_rate", payment_fee_rate),
+                         ("tax_rate", tax_rate), ("return_rate", return_rate), ("chargeback_rate", chargeback_rate)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
+            raise ValueError(field + " must be a fraction between 0 and 1")
+    payment_fixed_fee = money("payment_fixed_fee", 0)
+    estimated_ad_cost = money("estimated_ad_cost", 0)
+    packaging_cost = money("packaging_cost", 0)
+    duty_cost = money("duty_cost", 0)
+    other_costs = money("other_costs", 0)
     keywords = body.get("keywords", [])
     if isinstance(keywords, str):
         keywords = [x.strip() for x in keywords.split(",") if x.strip()]
@@ -54,6 +68,10 @@ def submit_mission(db_path, body):
         "product_type": product_type, "destination": destination,
         "currency": currency, "geo": geo, "selling_price": selling_price,
         "product_cost": product_cost, "shipping_cost": shipping_cost,
+        "platform_fee_rate": platform_fee_rate, "payment_fee_rate": payment_fee_rate,
+        "payment_fixed_fee": payment_fixed_fee, "estimated_ad_cost": estimated_ad_cost,
+        "packaging_cost": packaging_cost, "duty_cost": duty_cost, "other_costs": other_costs,
+        "tax_rate": tax_rate, "return_rate": return_rate, "chargeback_rate": chargeback_rate,
         "keywords": [x.strip() for x in keywords], "style": body.get("style", "orbit"),
         "palette": body.get("palette", "midnight"),
     }
@@ -234,24 +252,42 @@ def run_mission(db_path, payload):
     comparison = step("Supplier quote comparison",
                       lambda: compare_supplier_quotes(db_path, payload["product_type"],
                                                       payload["destination"], payload["currency"]))
-    best = comparison.get("best_quote") if comparison else None
+    # Exclude stale quotes from automatic cost selection; aging quotes remain usable with a warning.
+    candidates = comparison.get("quotes", []) if comparison else []
+    fresh_candidates = [q for q in candidates if q.get("freshness") == "fresh"]
+    aging_candidates = [q for q in candidates if q.get("freshness") == "aging"]
+    best = (fresh_candidates or aging_candidates or [None])[0]
     if best:
         product_cost = best["quote"]["product_cost"]
         shipping_cost = best["quote"]["shipping_cost"]
         cost_source = "saved operator-entered supplier quote #" + str(best["supplier_id"])
+        if best.get("freshness") == "aging":
+            warnings.append("Selected supplier quote is 8-30 days old; reconfirm price and availability.")
+        if best.get("status") != "verified":
+            warnings.append("Selected supplier quote is not independently verified.")
     else:
         product_cost = payload["product_cost"]
         shipping_cost = payload["shipping_cost"]
-        cost_source = "operator-provided estimate; no matching supplier quote found"
-        warnings.append("No matching supplier quote was available; economics use the supplied cost assumptions.")
+        cost_source = "operator-provided estimate; no fresh or aging matching supplier quote"
+        warnings.append("No fresh or aging matching supplier quote was available; economics use supplied cost assumptions.")
 
     economics = step("Unit economics",
         lambda: calculate_unit_economics(Offer(
             channel="POD / dropshipping estimate",
             selling_price=payload["selling_price"], product_cost=product_cost,
-            shipping_cost=shipping_cost, currency=payload["currency"])))
-    research_context = {"market_signals": trends, "supplier_comparison": comparison,
-                        "unit_economics": economics, "cost_assumptions": cost_source}
+            shipping_cost=shipping_cost, packaging_cost=payload["packaging_cost"],
+            platform_fee_rate=payload["platform_fee_rate"], payment_fee_rate=payload["payment_fee_rate"],
+            payment_fixed_fee=payload["payment_fixed_fee"], estimated_ad_cost=payload["estimated_ad_cost"],
+            other_costs=payload["other_costs"], duty_cost=payload["duty_cost"],
+            tax_rate=payload["tax_rate"], return_rate=payload["return_rate"],
+            chargeback_rate=payload["chargeback_rate"], currency=payload["currency"])))
+    research_context = {
+        "market_signals": trends, "supplier_comparison": comparison,
+        "selected_supplier_quote": best, "unit_economics": economics,
+        "cost_assumptions": cost_source,
+        "market_signal_limitations": "Trend attention is not purchase intent or demand proof.",
+        "supplier_limitations": "Quotes are operator-entered; freshness is not independent verification.",
+    }
     ai_work = step("AI listing, launch assets and research analysis",
                    lambda: _ai_work(db_path, payload, research_context))
     ai_assets = ai_work.get("assets", {}) if isinstance(ai_work, dict) else {}
@@ -299,19 +335,28 @@ def run_mission(db_path, payload):
         analysis = dict(ai_assets.get("research_analysis") or {})
         analysis.setdefault("data_visuals", [])
         # Build a factual cost/profit visual from Aureon's own calculator output when available.
-        if economics and not analysis["data_visuals"]:
-            chart_items = [
-                {"label": "Selling price", "value": round(float(economics.get("selling_price", payload["selling_price"])), 2)},
-                {"label": "Total estimated cost", "value": round(float(economics.get("total_cost", product_cost + shipping_cost)), 2)},
-                {"label": "Estimated profit", "value": round(float(economics.get("estimated_profit", 0)), 2)},
-            ]
-            analysis["data_visuals"] = [{"title": "Unit economics · " + payload["currency"], "data": chart_items}]
+        # Financial numbers and chart data come from Aureon's calculator, never LLM arithmetic.
+        if economics:
+            analysis["data_visuals"] = [{
+                "title": "Unit economics · " + payload["currency"],
+                "data": [
+                    {"label": "Selling price", "value": economics["selling_price"]},
+                    {"label": "Fulfilment", "value": economics["fulfilment_cost"]},
+                    {"label": "Fees and reserves", "value": round(
+                        economics["platform_fee"] + economics["payment_fee"] + economics["estimated_tax"] +
+                        economics["return_reserve"] + economics["chargeback_reserve"] +
+                        economics["advertising_cost"] + economics["other_costs"], 2)},
+                    {"label": "Estimated profit", "value": economics["estimated_profit"]},
+                ],
+            }]
         analysis["metrics"] = {
             "selling_price": round(float(economics.get("selling_price", payload["selling_price"])), 2) if economics else payload["selling_price"],
             "landed_supplier_cost": round(product_cost + shipping_cost, 2),
             "estimated_profit": round(float(economics.get("estimated_profit", 0)), 2) if economics else 0,
             "profit_margin_percent": round(float(economics.get("profit_margin", 0)) * 100, 1) if economics else 0,
+            "break_even_ad_cost": economics.get("break_even_ad_cost", 0) if economics else 0,
         }
+        analysis["financial_breakdown"] = economics or {}
         ai_review = {"status": "completed", "provider": ai_work.get("provider"),
                      "model": ai_work.get("model"), "analysis": analysis,
                      "warning": "AI-generated analysis is advisory. Numeric metrics and chart values come from Aureon's calculator; supplier quotes remain unverified."}
@@ -339,7 +384,14 @@ def run_mission(db_path, payload):
         },
         "assumptions": {
             "supplier_cost_source": cost_source,
-            "taxes_fees_returns_ads": "not included unless separately supplied",
+            "operator_supplied_economic_inputs": {
+                "platform_fee_rate": payload["platform_fee_rate"], "payment_fee_rate": payload["payment_fee_rate"],
+                "payment_fixed_fee": payload["payment_fixed_fee"], "estimated_ad_cost": payload["estimated_ad_cost"],
+                "packaging_cost": payload["packaging_cost"], "duty_cost": payload["duty_cost"],
+                "tax_rate": payload["tax_rate"], "return_rate": payload["return_rate"],
+                "chargeback_rate": payload["chargeback_rate"], "other_costs": payload["other_costs"],
+            },
+            "zero_assumptions_mean_not_provided": True,
             "trend_data": "attention signals only; not validated product demand",
             "supplier_quotes": "operator-entered and unverified",
         },
