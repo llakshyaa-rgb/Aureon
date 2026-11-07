@@ -63,7 +63,13 @@ def create_record(path,kind,title,data=None,status=None,idempotency_key=None):
     try: existing_data=json.loads(existing["data_json"])
     except (TypeError,ValueError): continue
     if existing_data.get("_aureon_idempotency_key")==idempotency_key.strip():
-     return _record(conn.execute("SELECT * FROM workspace_records WHERE id=?",(existing["id"],)).fetchone())
+     original={k:v for k,v in existing_data.items() if k!="_aureon_idempotency_key"}
+     if original != (data or {}) or existing["id"] is None:
+      raise ValueError("idempotency_key already belongs to a different record request")
+     stored=conn.execute("SELECT * FROM workspace_records WHERE id=?",(existing["id"],)).fetchone()
+     if stored["title"] != title.strip() or stored["status"] != status:
+      raise ValueError("idempotency_key already belongs to a different record request")
+     return _record(stored)
   cur=conn.execute("INSERT INTO workspace_records(kind,status,title,data_json) VALUES(?,?,?,?)",(kind,status,title.strip(),json_dump(payload)))
   row=conn.execute("SELECT * FROM workspace_records WHERE id=?",(cur.lastrowid,)).fetchone()
   conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",("workspace."+kind+".created",kind,str(cur.lastrowid),json_dump({"status":status})))
