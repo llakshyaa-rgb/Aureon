@@ -82,12 +82,24 @@ def validate_svg_artwork(svg, width=4500, height=5400, safe_margin=250):
     text_content = " ".join("".join(el.itertext()) for el in texts).strip()
     all_text_present = bool(texts) and bool(text_content)
     text_overflow = False
+    text_bounds = []
     for el in texts:
         try:
             x = float(el.attrib.get("x", "0"))
             y = float(el.attrib.get("y", "0"))
             fs = float(el.attrib.get("font-size", "0"))
-            if x < safe_margin or x > width - safe_margin or y < safe_margin or y > height - safe_margin or fs <= 0:
+            content = "".join(el.itertext()).strip()
+            # Conservative estimate for common sans-serif text; final visual review remains necessary.
+            estimated_width = len(content) * fs * 0.62
+            anchor = el.attrib.get("text-anchor", "start")
+            left = x - estimated_width / 2 if anchor == "middle" else x - estimated_width if anchor == "end" else x
+            right = left + estimated_width
+            top, bottom = y - fs, y + fs * 0.25
+            inside = (fs > 0 and left >= safe_margin and right <= width - safe_margin
+                      and top >= safe_margin and bottom <= height - safe_margin)
+            text_bounds.append({"left": round(left), "right": round(right),
+                                "top": round(top), "bottom": round(bottom), "inside_safe_area": inside})
+            if not inside:
                 text_overflow = True
         except (TypeError, ValueError):
             text_overflow = True
@@ -105,7 +117,7 @@ def validate_svg_artwork(svg, width=4500, height=5400, safe_margin=250):
     }
     return {"passed": all(checks.values()), "checks": checks,
             "dimensions_px": {"width": width, "height": height},
-            "safe_margin_px": safe_margin, "text_elements": len(texts),
+            "safe_margin_px": safe_margin, "text_elements": len(texts), "estimated_text_bounds": text_bounds,
             "warnings": ["Automated checks cannot establish trademark, copyright or visual-quality clearance.",
                          "Review print-provider templates and manually inspect small text and contrast.",
                          "SVG preview is vector artwork; raster export is not included."]}
