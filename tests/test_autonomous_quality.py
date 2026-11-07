@@ -7,7 +7,7 @@ from unittest.mock import patch
 from aureon.db import initialize
 from aureon.intelligence.product_research import analyze_competition
 from aureon.creative import validate_svg_artwork
-from aureon.agents import submit_plan, runtime_status
+from aureon.agents import submit_plan, runtime_status, draft_plan, plan_run
 from aureon.worker import run_once
 
 
@@ -59,6 +59,20 @@ class AgentExecutionRecoveryTests(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def test_adaptive_plan_uses_model_and_validates_allowlisted_tasks(self):
+        response = {"provider": "test-provider", "model": "test-model",
+                    "content": ' ```json\\n{"name":"Design workflow","tasks":[{"kind":"design.brief","payload":{"niche":"space","audience":"students","product_type":"tee","style":"minimal","concept":"planets"}}],"rationale":"Create a first design brief."}\\n``` '}
+        with patch("aureon.llm.generate", return_value=response):
+            result = draft_plan(self.db, "Create a space-themed shirt design", {"audience": "students"})
+        self.assertEqual(result["provider"], "test-provider")
+        self.assertEqual(result["plan"]["tasks"][0]["kind"], "design.brief")
+        self.assertTrue(result["requires_operator_review"])
+
+    def test_plan_rejects_unsupported_payload_fields(self):
+        with self.assertRaises(ValueError):
+            plan_run("Unsafe fields", [{"kind": "trends.collect",
+                "payload": {"geo": "IN", "shell": "rm -rf /"}}])
 
     def test_independent_steps_continue_and_persist_after_one_failure(self):
         plan = submit_plan(self.db, "Partial recovery test", [
