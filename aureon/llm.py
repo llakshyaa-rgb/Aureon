@@ -25,6 +25,10 @@ PROVIDERS = {
     "fireworks": {"label": "Fireworks AI", "protocol": "openai", "base_url": "https://api.fireworks.ai/inference/v1", "models": "Any Fireworks model ID"},
     "perplexity": {"label": "Perplexity", "protocol": "openai", "base_url": "https://api.perplexity.ai", "models": "Any Perplexity model ID"},
     "ollama": {"label": "Ollama (local)", "protocol": "openai", "base_url": "http://127.0.0.1:11434/v1", "models": "Exact locally installed Ollama model tag; no API key needed"},
+    "lm_studio": {"label": "LM Studio (local)", "protocol": "openai", "base_url": "http://127.0.0.1:1234/v1", "models": "Exact model identifier loaded in LM Studio"},
+    "nvidia": {"label": "NVIDIA NIM", "protocol": "openai", "base_url": "https://integrate.api.nvidia.com/v1", "models": "Any model deployed in NVIDIA NIM"},
+    "sambanova": {"label": "SambaNova", "protocol": "openai", "base_url": "https://api.sambanova.ai/v1", "models": "Any SambaNova-supported model ID"},
+    "siliconflow": {"label": "SiliconFlow", "protocol": "openai", "base_url": "https://api.siliconflow.com/v1", "models": "Any SiliconFlow model ID"},
     "custom": {"label": "Custom OpenAI-compatible endpoint", "protocol": "openai", "base_url": "", "models": "Any model ID exposed by your endpoint"},
 }
 
