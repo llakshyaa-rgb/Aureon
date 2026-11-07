@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from aureon.db import initialize
+from aureon.workflows import initialize_workspace
 from aureon.intelligence.product_research import analyze_competition
 from aureon.creative import validate_svg_artwork
 from aureon.agents import submit_plan, runtime_status, draft_plan, plan_run
@@ -56,6 +57,7 @@ class AgentExecutionRecoveryTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / "aureon.sqlite3"
         initialize(self.db)
+        initialize_workspace(self.db)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -79,7 +81,7 @@ class AgentExecutionRecoveryTests(unittest.TestCase):
             {"kind": "design.brief", "payload": {
                 "niche": "space", "audience": "students",
                 "product_type": "tee", "style": "minimal", "concept": "planets"}},
-            {"kind": "trends.collect", "payload": {"geo": "IN", "limit": 5}},
+            {"kind": "trends.collect", "payload": {"geo": "IN"}},
         ])
         with patch("aureon.worker.collect_trends", side_effect=RuntimeError("temporary network failure")):
             outcome = run_once(self.db)
