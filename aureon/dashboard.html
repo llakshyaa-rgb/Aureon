@@ -103,6 +103,85 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
 .ai-details pre{margin:0;padding:14px;border-top:1px solid var(--line);max-height:260px;overflow:auto;background:#172A35;color:#F7F5ED;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}
 .ai-text{font-size:13px;line-height:1.7;overflow-wrap:anywhere}
 @media(max-width:520px){.page-section{padding:16px}.ai-bar-row{grid-template-columns:1fr auto}.ai-bar-track{grid-column:1/-1;grid-row:2}.ai-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* AUREON DARK BLUE WORKSPACE — keep the blue identity; remove the pale/white surfaces. */
+:root{
+ color-scheme:dark;
+ --ink:#E7F0FC;
+ --paper:#101C2B;
+ --blue:#438BFA;
+ --line:rgba(151,180,216,.19);
+ --muted:#A0B2C9;
+ --white:#EAF2FC;
+ --accent-soft:rgba(67,139,250,.16);
+ --surface:#192A40;
+ --surface-alt:#20344D;
+}
+html,body{background:#0B1421!important;color:#E7F0FC!important}
+body{background:radial-gradient(ellipse at 88% 0%,rgba(67,139,250,.13),transparent 36%),#0B1421!important}
+.sidebar{background:#0D1929!important;color:#E7F0FC!important;border-right:1px solid rgba(151,180,216,.12)}
+.brand-mark{background:#438BFA!important;color:#fff}
+.brand small,.sidebar-foot{color:#91A6C1!important}
+.nav-item{color:#C3D2E5!important}
+.nav-item:hover{background:rgba(67,139,250,.13)!important;color:#fff!important}
+.nav-item.active{background:#286CCB!important;color:#fff!important}
+.main{background:transparent!important}
+.page-section{background:linear-gradient(145deg,#17283D 0%,#1B3049 100%)!important;border-color:rgba(151,180,216,.18)!important;box-shadow:0 14px 36px rgba(0,0,0,.22)!important;color:#E7F0FC!important}
+.page-section h2,.page-section h3,.page-section h4{color:#F0F6FF}
+.muted,.section-intro,.eyebrow,.top-meta{color:#A0B2C9!important}
+input,textarea,select{background:#0E1A2A!important;color:#E7F0FC!important;border-color:rgba(151,180,216,.25)!important}
+input::placeholder,textarea::placeholder{color:#7F94AE!important}
+input:focus,textarea:focus,select:focus{background:#13243A!important;border-color:#438BFA!important;box-shadow:0 0 0 3px rgba(67,139,250,.2)!important}
+input option,select option{background:#13243A;color:#E7F0FC}
+button{background:#347FE8!important;color:#fff!important;border-color:rgba(104,164,255,.28)!important;box-shadow:0 4px 13px rgba(0,0,0,.2)!important}
+button:hover{background:#4B91F5!important}
+button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],button[onclick*="compare"],button[onclick*="Compare"]{background:#203751!important;color:#DCEBFF!important;border-color:rgba(151,180,216,.24)!important}
+.section-tab{background:#172A40!important;color:#C5D5E9!important;border-color:rgba(151,180,216,.2)!important}
+.section-tab.active{background:#347FE8!important;border-color:#347FE8!important;color:#fff!important}
+.data-card,.data-row,.runtime-run,.finance-currency-card,.record-card,.pm-card,.pm-editor{background:#1B3048!important;border-color:rgba(151,180,216,.2)!important;color:#E7F0FC!important;box-shadow:0 5px 18px rgba(0,0,0,.14)!important}
+.data-row,.compact-row{background:#1B3048!important}
+.data-card h4,.data-row span,.record-kind,.record-card p,.pm-card p,.pm-meta{color:#A0B2C9!important}
+.metric-card{background:#0E1B2D!important;border:1px solid rgba(67,139,250,.28)!important;color:#EAF2FC!important}
+.metric-card span,.metric-card small{color:#A0B2C9!important}
+.result-note,.runtime-stat,.runtime-step,.compact-row{background:#203650!important;color:#DCEBFA!important;border-color:rgba(151,180,216,.2)!important}
+.empty{background:#15263B!important;border-color:rgba(151,180,216,.28)!important;color:#A0B2C9!important}
+.runtime-state{background:#263B55!important;color:#C7D8EE!important}
+.runtime-state.succeeded,.status-succeeded,.status-approved,.status-completed,.status-resolved{background:#173D37!important;color:#8BE0BC!important}
+.runtime-state.failed,.status-failed,.status-rejected,.status-cancelled{background:#492B36!important;color:#FFB2BC!important}
+.runtime-state.running,.status-running,.status-in_transit,.status-processing{background:#1E3C68!important;color:#A9CEFF!important}
+.status-pending,.status-queued,.status-draft{background:#4A3A25!important;color:#F5D59B!important}
+.data-table-wrap{background:#172A40!important;border-color:rgba(151,180,216,.2)!important}
+.data-table th{background:#203650!important;color:#B9CBE1!important;border-color:rgba(151,180,216,.18)!important}
+.data-table td{color:#E0EAF7!important;border-color:rgba(151,180,216,.14)!important}
+.data-table tr:hover td{background:#213B59!important}
+.pill{background:rgba(67,139,250,.16)!important;color:#9FC5FF!important}
+.page-section a{color:#8DBBFF!important}
+.pm-editor{background:linear-gradient(145deg,#1B3048,#17283D)!important}
+.mission-json{background:#081321!important;color:#DCEBFA!important}
+.finance-breakdown{border-color:rgba(151,180,216,.18)!important}
+.runtime-stat span{color:#A0B2C9!important}
+.overview-launchpad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 24px}
+.launch-card{min-width:0;padding:17px;border:1px solid rgba(105,160,235,.24);border-radius:15px;background:linear-gradient(145deg,#203A59,#192D45);display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.launch-kicker{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8DBBFF;font-weight:800}
+.launch-card h3{margin:2px 0!important;font-size:16px}
+.launch-card p{font-size:12px;line-height:1.55;color:#B1C3D9;margin:0 0 8px;flex:1}
+.launch-card button{width:100%;margin-top:auto}
+.nav-list{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
+.nav-item{flex:0 1 auto;white-space:normal;max-width:100%;justify-content:flex-start}
+.section-tabs{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.section-tab{flex:0 1 auto;white-space:normal;max-width:100%;overflow-wrap:anywhere}
+@media(max-width:850px){
+ .sidebar{padding:12px 12px 10px;gap:10px}
+ .nav-list{display:flex;flex-wrap:wrap;overflow:visible;max-width:100%;padding:2px 0}
+ .nav-item{flex:0 1 auto;max-width:100%;min-height:38px;padding:8px 10px;font-size:12px}
+ .main{padding:16px 12px 34px}
+ .page-section{padding:16px 13px;border-radius:15px}
+ .section-tabs{display:flex;flex-wrap:wrap;overflow:visible;margin:0 0 16px;padding:0}
+ .section-tab{flex:0 1 auto;min-height:34px;padding:7px 10px;font-size:11px}
+ .overview-launchpad{grid-template-columns:1fr}
+ .launch-card{padding:15px}
+ .topbar{align-items:flex-start;flex-wrap:wrap}
+}
 </style></head><body><div class="app-shell"><aside class="sidebar">
 <div class="brand"><div class="brand-mark">A</div><div><strong>AUREON</strong><small>Commerce workspace</small></div></div>
 <div><div class="nav-label">Workspace</div><nav class="nav-list" aria-label="Main sections">
@@ -133,7 +212,7 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
 </section>
 <section class="panel page-section" id="page-products" data-title="Create product"><h2>Create product</h2><div class="grid"><input id="productTitle" placeholder="Product name"><input id="productPrice" type="number" min="0" step="0.01" placeholder="Selling price"><input id="productCurrency" value="INR" maxlength="3"><button onclick="createProduct()">Save product</button></div><pre id="productResult"></pre></section>
 <section class="panel page-section" id="page-finance-entry" data-title="Record finance transaction"><h2>Record finance transaction</h2><div class="grid"><select id="financeType"><option value="revenue">Revenue</option><option value="supplier_cost">Supplier cost</option><option value="shipping">Shipping</option><option value="advertising">Advertising</option><option value="other_cost">Other cost</option></select><input id="financeAmount" type="number" min="0" step="0.01" placeholder="Amount"><input id="financeCurrency" value="INR" maxlength="3"><input id="financeDescription" placeholder="Description"><button onclick="addFinance()">Save transaction</button></div><pre id="financeResult"></pre></section>
-<section class="panel page-section" id="page-overview" data-title="Workspace overview"><h2>Workspace overview</h2><div class="grid" id="stats">Loading…</div></section>
+<section class="panel page-section" id="page-overview" data-title="Workspace overview"><h2>Workspace overview</h2><p class="section-intro">Your operating desk. Configure the AI brain, launch the commerce worker and monitor its execution from here.</p><div class="overview-launchpad"><article class="launch-card"><span class="launch-kicker">01 · Intelligence</span><h3>AI model</h3><p>Choose any supported provider and model. Save its key locally, then test the connection before running AI-assisted work.</p><button onclick="navigateTo('page-llm-settings')">Configure AI model</button></article><article class="launch-card"><span class="launch-kicker">02 · Execution</span><h3>Commerce worker</h3><p>Start a complete research-to-listing mission. The local worker handles the approved workflow and records each step.</p><button onclick="navigateTo('page-agents-workflow')">Open worker control</button></article><article class="launch-card"><span class="launch-kicker">03 · Live status</span><h3>Agent runtime</h3><p>Check worker health, active jobs, recent runs and any steps that need attention.</p><button onclick="navigateTo('page-agent-runtime')">View runtime</button></article></div><h3>Workspace records</h3><div class="grid" id="stats">Loading…</div></section>
 <section class="panel page-section" id="page-finance" data-title="Finance snapshot"><h2>Finance snapshot</h2><button onclick="loadPnL()">Open period P&amp;L</button><input id="pnlStart" placeholder="Start date/time (optional)"><input id="pnlEnd" placeholder="End date/time (optional)"><input id="pnlCurrency" placeholder="Currency (optional)" maxlength="3"><pre id="finance">Loading…</pre><pre id="pnlResult"></pre></section>
 <section class="panel page-section" id="page-records" data-title="Recent work"><h2>Recent work</h2><pre id="records">Loading…</pre></section>
 <section class="panel page-section" id="page-jobs" data-title="Job queue"><h2>Job queue</h2><pre id="jobs">Loading…</pre></section>
@@ -199,11 +278,11 @@ function renderData(value){
  return scalar(value);
 }
 const WORKSPACE_GROUPS={
-overview:{label:"Overview",items:[["page-overview","Workspace overview"],["page-opportunities","Opportunity discovery"],["page-records","Recent work"]]},
+overview:{label:"Overview",items:[["page-overview","Workspace overview"],["page-agents-workflow","Worker control"],["page-llm-settings","AI model"],["page-agent-runtime","Runtime status"],["page-opportunities","Opportunity discovery"],["page-records","Recent work"]]},
 products:{label:"Products & Research",items:[["page-product-management","Product management"],["page-products","Create product"],["page-suppliers","Supplier management"],["page-printify","Printify catalog"],["page-shopify","Shopify connection"],["page-creative","Creative studio"]]},
 finance:{label:"Finance & Growth",items:[["page-finance","Finance snapshot"],["page-finance-entry","Record transaction"],["page-marketing","Marketing experiments"],["page-campaigns","Campaigns"]]},
 operations:{label:"Operations",items:[["page-orders","Order operations"],["page-support","Support queue"],["page-approvals","Approvals"]]},
-automation:{label:"Automation & System",items:[["page-agents-workflow","Agent workflows"],["page-jobs","Job queue"],["page-agent-runtime","Agent runtime"],["page-llm-settings","AI model settings"]]}
+automation:{label:"Automation & System",items:[["page-jobs","Job queue"]]}
 };
 let activeWorkspaceGroup="overview";
 function showGroup(group){
