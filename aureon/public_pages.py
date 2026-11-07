@@ -161,7 +161,7 @@ def fetch_product_page(url, timeout=12):
     })
     opener = build_opener(_SafeRedirect())
     try:
-        with opener.open(request, timeout=max(3, min(int(timeout), 15)) as response:
+        with opener.open(request, timeout=max(3, min(int(timeout), 15))) as response:
             final_url = _validate_public_url(response.geturl())
             content_type = (response.headers.get("Content-Type") or "").lower()
             if "html" not in content_type and "xhtml" not in content_type:
