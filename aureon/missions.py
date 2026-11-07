@@ -309,6 +309,10 @@ def run_mission(db_path, payload):
     news_research = step("Keyword news research with source links",
                          lambda: collect_keyword_research(db_path, payload["keywords"],
                                                           payload["geo"], 20))
+    if news_research and news_research.get("errors"):
+        warnings.append("Some keyword news searches could not be collected; inspect the research errors.")
+    if news_research and not news_research.get("fetched"):
+        warnings.append("No keyword news sources were returned; market coverage remains incomplete.")
     comparison = step("Supplier quote comparison",
                       lambda: compare_supplier_quotes(db_path, payload["product_type"],
                                                       payload["destination"], payload["currency"]))
