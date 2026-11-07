@@ -241,7 +241,7 @@ def run_mission(db_path, payload):
     steps = []
     warnings = []
     run_id = payload.get("run_id")
-    def persist_progress(name, status, error=None):
+    def persist_progress(name, status, error=None, output=None):
         if run_id is None:
             return
         from datetime import datetime, timezone
@@ -254,8 +254,14 @@ def run_mission(db_path, payload):
                 progress = run_data.setdefault("progress", [])
                 progress.append({"name": name, "status": status, "at": stamp,
                                  **({"error": str(error)[:500]} if error else {})})
-                run_data["current_step"] = name
-                run_data["completed_steps"] = len(progress)
+                run_data["current_step"] = name if status == "running" else None
+                run_data["completed_steps"] = sum(1 for item in run_data.get("step_results", {}).values()
+                                                  if item.get("status") == "succeeded")
+                if status == "succeeded":
+                    run_data.setdefault("step_results", {})[name] = {"status": "succeeded", "output": output}
+                elif status in {"needs_attention", "not_configured"}:
+                    run_data.setdefault("step_results", {})[name] = {"status": status,
+                        **({"error": str(error)[:500]} if error else {})}
                 conn.execute("UPDATE workspace_records SET status=?,data_json=? WHERE id=?",
                              ("running" if status in {"running", "succeeded", "not_configured"} else "needs_attention",
                               json_dump(run_data), run_id))
@@ -265,16 +271,27 @@ def run_mission(db_path, payload):
                  json_dump({"step": name, "status": status, "at": stamp,
                             **({"error": str(error)[:500]} if error else {})})))
     def step(name, fn):
+        if run_id is not None:
+            with connect(db_path) as conn:
+                row = conn.execute("SELECT data_json FROM workspace_records WHERE id=? AND kind='agent_run'",
+                                   (run_id,)).fetchone()
+                if row:
+                    saved = json.loads(row["data_json"]).get("step_results", {}).get(name)
+                    if saved and saved.get("status") == "succeeded":
+                        value = saved.get("output")
+                        steps.append({"name": name, "status": "succeeded", "output": value,
+                                      "resumed": True})
+                        return value
         persist_progress(name, "running")
         try:
             value = fn()
             if isinstance(value, dict) and value.get("status") == "not_configured":
                 steps.append({"name": name, "status": "not_configured", "output": value})
                 warnings.append(name + ": AI provider is not configured.")
-                persist_progress(name, "not_configured")
+                persist_progress(name, "not_configured", output=value)
             else:
                 steps.append({"name": name, "status": "succeeded", "output": value})
-                persist_progress(name, "succeeded")
+                persist_progress(name, "succeeded", output=value)
             return value
         except Exception as exc:
             steps.append({"name": name, "status": "needs_attention", "error": str(exc)})
@@ -341,11 +358,11 @@ def run_mission(db_path, payload):
             "tags": ai_assets.get("tags", payload["keywords"]),
             "source": "Aureon autonomous mission",
             "cost_assumption": cost_source,
-        }, "research"))
+        }, "research", idempotency_key=f"mission:{run_id}:product" if run_id is not None else None))
     artwork = step("Editable design artwork",
-        lambda: create_asset(db_path, title=payload["product_title"],
-                             concept=payload["concept"], style=payload["style"],
-                             palette=payload["palette"]))
+        lambda: create_asset(db_path, idempotency_key=f"mission:{run_id}:artwork" if run_id is not None else None,
+                             title=payload["product_title"], concept=payload["concept"],
+                             style=payload["style"], palette=payload["palette"]))
     def listing_record():
         draft = ({"title": ai_assets["listing_title"],
                   "description": ai_assets["listing_description"],
@@ -354,7 +371,8 @@ def run_mission(db_path, payload):
                  if ai_assets else generate_listing_draft(
                      {"title": payload["product_title"], "features": payload["concept"]},
                      payload["audience"], payload["keywords"]))
-        return create_record(db_path, "listing", draft["title"], draft, "draft")
+        return create_record(db_path, "listing", draft["title"], draft, "draft",
+                             idempotency_key=f"mission:{run_id}:listing" if run_id is not None else None)
     listing = step("Listing draft", listing_record)
     def marketing_record():
         draft = ({"headline": ai_assets["marketing_headline"],
@@ -364,7 +382,8 @@ def run_mission(db_path, payload):
                      payload["product_title"], payload["audience"], "instagram",
                      payload["concept"], "Explore the collection"))
         return create_record(db_path, "campaign",
-            "Draft · " + payload["product_title"], {"draft": draft}, "draft")
+            "Draft · " + payload["product_title"], {"draft": draft}, "draft",
+            idempotency_key=f"mission:{run_id}:marketing" if run_id is not None else None)
     marketing = step("Launch copy draft", marketing_record)
     analysis = dict(ai_assets.get("research_analysis") or {}) if ai_assets else {
         "executive_summary": "Aureon completed its local research and calculation steps. Configure an AI provider for model-generated interpretation.",
