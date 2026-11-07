@@ -141,7 +141,7 @@ def draft_plan(db_path, objective, context=None):
         "choose only tasks that can run with supplied context; otherwise explain gaps in rationale. "
         "Use earlier task indexes for dependencies. Never reference unavailable outputs."
     )
-    prompt = "OBJECTIVE:\\n" + objective.strip() + "\\nCONTEXT:\\n" + json.dumps(context, ensure_ascii=False)[:12000]
+    prompt = "OBJECTIVE:\n" + objective.strip() + "\nCONTEXT:\n" + json.dumps(context, ensure_ascii=False)[:12000]
     response = generate(db_path, system, prompt, json_mode=True)
     raw = response.get("content", "").strip()
     if raw.startswith("```"):
@@ -191,12 +191,12 @@ def chat_command(db_path, message, history=None):
         "Only use dependencies on earlier task indexes. Never claim a task ran unless it is in the supplied results. "
         "Keep the reply concise and friendly."
     )
-    prompt = "RECENT CONVERSATION:\\n" + json.dumps(clean_history, ensure_ascii=False)[:10000]
-    prompt += "\\nCURRENT USER MESSAGE:\\n" + message.strip()
+    prompt = "RECENT CONVERSATION:\n" + json.dumps(clean_history, ensure_ascii=False)[:10000]
+    prompt += "\nCURRENT USER MESSAGE:\n" + message.strip()
     response = generate(db_path, system, prompt, json_mode=True)
     raw = response.get("content", "").strip()
     if raw.startswith("```"):
-        raw = raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
     try:
         data = json.loads(raw)
     except (TypeError, json.JSONDecodeError):
