@@ -1,6 +1,6 @@
 # Aureon Complete Feature Inventory
 
-This is the canonical feature checklist. The Python registry in aureon/features.py is its machine-readable companion.
+This is the canonical feature checklist. The Python registry in aureon/features.py is its machine-readable companion. The current implementation status is intentionally distinct from the full product scope below; an item described here is not considered complete until its exit criteria are verified.
 
 ## Status meanings
 - **foundation** — supporting infrastructure or an initial calculation exists; the entire domain is not complete.
@@ -8,7 +8,7 @@ This is the canonical feature checklist. The Python registry in aureon/features.
 - Future statuses: **in_progress**, **testing**, and **complete**, assigned only after implementation and verification.
 
 ## 1. Global Opportunity Intelligence
-Worldwide product, niche and micro-niche discovery; search trends, social signals, seasonality and regional interest; competitor listings, pricing, positioning and saturation; underserved-market discovery; historical trend tracking; momentum detection; explainable ranking with source evidence, confidence and rejection reasons.
+Worldwide product, niche and micro-niche discovery; search trends, social signals, seasonality and regional interest; competitor listings, pricing, positioning and saturation; underserved-market discovery; historical trend tracking; momentum detection; explainable ranking with source evidence, confidence and rejection reasons. Implemented foundation: fetch and parse up to five operator-supplied public HTTPS product pages per mission, persist timestamped listing observations, report per-page errors, and calculate min/median/max prices separately per currency. This is a supplied-URL sample, not automatic competitor discovery or proof of market saturation.
 
 ## 2. Product and Supplier Research
 Normalized supplier and POD catalog search; price, availability, quality, ratings and reliability comparison; destination-specific shipping and delivery quotes; landed cost; quote freshness; supplier history; restricted-product and policy checks.
