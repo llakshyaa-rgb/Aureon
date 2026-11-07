@@ -438,6 +438,7 @@ def run_mission(db_path, payload):
         "steps": steps,
         "outputs": {
             "trend_collection": trends,
+            "keyword_news_research": news_research,
             "supplier_comparison": comparison,
             "economics": economics,
             "product": product,
