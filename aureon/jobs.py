@@ -101,7 +101,8 @@ def recover_interrupted(path: Path):
             # be requeued once even though agent jobs have max_attempts=1.
             resumable = row["kind"] != "agent.run" or checkpointed_agent
             status = "queued" if resumable and (
-                row["kind"] == "agent.run" or row["attempts"] < row["max_attempts"]
+                (row["kind"] == "agent.run" and row["attempts"] <= row["max_attempts"])
+                or (row["kind"] != "agent.run" and row["attempts"] < row["max_attempts"])
             ) else "failed"
             if row["kind"] == "agent.run" and not checkpointed_agent:
                 message = "Agent plan had no durable step checkpoint and was not replayed; inspect it before starting a new run."
