@@ -224,6 +224,13 @@ def _ai_work(db_path, payload, context):
 
 
 def run_mission(db_path, payload):
+    # Backward-compatible defaults for queued missions created before optional cost fields existed.
+    payload = {
+        "platform_fee_rate": 0, "payment_fee_rate": 0, "payment_fixed_fee": 0,
+        "estimated_ad_cost": 0, "packaging_cost": 0, "duty_cost": 0,
+        "other_costs": 0, "tax_rate": 0, "return_rate": 0, "chargeback_rate": 0,
+        **payload,
+    }
     from .trends import collect_trends
     from .suppliers import compare_supplier_quotes
     from .intelligence.economics import Offer, calculate_unit_economics
@@ -331,37 +338,45 @@ def run_mission(db_path, payload):
         return create_record(db_path, "campaign",
             "Draft · " + payload["product_title"], {"draft": draft}, "draft")
     marketing = step("Launch copy draft", marketing_record)
-    if ai_assets:
-        analysis = dict(ai_assets.get("research_analysis") or {})
-        analysis.setdefault("data_visuals", [])
-        # Build a factual cost/profit visual from Aureon's own calculator output when available.
-        # Financial numbers and chart data come from Aureon's calculator, never LLM arithmetic.
-        if economics:
-            analysis["data_visuals"] = [{
-                "title": "Unit economics · " + payload["currency"],
-                "data": [
-                    {"label": "Selling price", "value": economics["selling_price"]},
-                    {"label": "Fulfilment", "value": economics["fulfilment_cost"]},
-                    {"label": "Fees and reserves", "value": round(
-                        economics["platform_fee"] + economics["payment_fee"] + economics["estimated_tax"] +
-                        economics["return_reserve"] + economics["chargeback_reserve"] +
-                        economics["advertising_cost"] + economics["other_costs"], 2)},
-                    {"label": "Estimated profit", "value": economics["estimated_profit"]},
-                ],
-            }]
+    analysis = dict(ai_assets.get("research_analysis") or {}) if ai_assets else {
+        "executive_summary": "Aureon completed its local research and calculation steps. Configure an AI provider for model-generated interpretation.",
+        "opportunities": [],
+        "risks": ["Market attention is not proof of product demand.", "Supplier quotes and cost inputs may be unverified."],
+        "recommended_next_steps": ["Validate demand with independent sources.", "Confirm supplier stock, quality and shipping before committing."],
+        "missing_evidence": ["Verified competitor pricing", "Independent supplier confirmation", "Real customer conversion data"],
+        "confidence": "low",
+    }
+    # Numeric reporting and diagrams are calculated locally, never invented by the LLM.
+    if economics:
+        analysis["data_visuals"] = [{
+            "title": "Unit economics · " + payload["currency"],
+            "data": [
+                {"label": "Selling price", "value": economics["selling_price"]},
+                {"label": "Fulfilment", "value": economics["fulfilment_cost"]},
+                {"label": "Fees and reserves", "value": round(
+                    economics["platform_fee"] + economics["payment_fee"] + economics["estimated_tax"] +
+                    economics["return_reserve"] + economics["chargeback_reserve"] +
+                    economics["advertising_cost"] + economics["other_costs"], 2)},
+                {"label": "Estimated profit", "value": economics["estimated_profit"]},
+            ],
+        }]
         analysis["metrics"] = {
-            "selling_price": round(float(economics.get("selling_price", payload["selling_price"])), 2) if economics else payload["selling_price"],
+            "selling_price": economics["selling_price"],
             "landed_supplier_cost": round(product_cost + shipping_cost, 2),
-            "estimated_profit": round(float(economics.get("estimated_profit", 0)), 2) if economics else 0,
-            "profit_margin_percent": round(float(economics.get("profit_margin", 0)) * 100, 1) if economics else 0,
-            "break_even_ad_cost": economics.get("break_even_ad_cost", 0) if economics else 0,
+            "estimated_profit": economics["estimated_profit"],
+            "profit_margin_percent": round(economics["profit_margin"] * 100, 1),
+            "break_even_ad_cost": economics["break_even_ad_cost"],
         }
-        analysis["financial_breakdown"] = economics or {}
+    else:
+        analysis.setdefault("metrics", {})
+        analysis.setdefault("data_visuals", [])
+    analysis["financial_breakdown"] = economics or {}
+    if ai_assets:
         ai_review = {"status": "completed", "provider": ai_work.get("provider"),
                      "model": ai_work.get("model"), "analysis": analysis,
                      "warning": "AI-generated analysis is advisory. Numeric metrics and chart values come from Aureon's calculator; supplier quotes remain unverified."}
     else:
-        ai_review = {"status": "unavailable",
+        ai_review = {"status": "unavailable", "analysis": analysis,
                      "message": "AI assets unavailable; deterministic draft fallbacks were used."}
 
     result = {
