@@ -157,3 +157,72 @@ def draft_plan(db_path, objective, context=None):
             "provider": response.get("provider"), "model": response.get("model"),
             "requires_operator_review": True,
             "safety": "Only allowlisted local tasks are executable; external side effects remain approval-gated."}
+
+
+def chat_command(db_path, message, history=None):
+    """Conversational command interface: answer, ask a question, or queue an allowlisted local plan."""
+    if not isinstance(message, str) or not message.strip() or len(message) > 1600:
+        raise ValueError("message must be 1-1600 characters")
+    if history is None:
+        history = []
+    if not isinstance(history, list) or len(history) > 12:
+        raise ValueError("history must contain at most 12 messages")
+    clean_history = []
+    for item in history:
+        if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
+            continue
+        content = item.get("content")
+        if isinstance(content, str) and content.strip():
+            clean_history.append({"role": item["role"], "content": content[:1600]})
+    from .llm import generate
+    system = (
+        "You are Aureon, the user's conversational commerce operator. Reply ONLY as JSON with "
+        "keys reply (string), tasks (array), and needs_input (string or empty). "
+        "The user should be able to operate Aureon by describing goals in ordinary language. "
+        "For simple questions or conversation, return tasks=[] and answer in reply. "
+        "For a clear request to do work, create a short dependency-aware task plan using ONLY "
+        "these allowlisted local task kinds and exact payload fields: "
+        + json.dumps({k: sorted(v) for k, v in ALLOWED.items()})
+        + ". Never invent evidence, supplier quotes, market demand, prices, stock, sales, or credentials. "
+        "If essential input is missing, ask ONE concise question in needs_input and do not create tasks. "
+        "Do not ask for information that can be safely left as an explicit assumption. "
+        "Do not create tasks for publishing, spending, payment, placing supplier orders, customer messaging, "
+        "deleting data, account changes, arbitrary code or shell execution. "
+        "Only use dependencies on earlier task indexes. Never claim a task ran unless it is in the supplied results. "
+        "Keep the reply concise and friendly."
+    )
+    prompt = "RECENT CONVERSATION:\\n" + json.dumps(clean_history, ensure_ascii=False)[:10000]
+    prompt += "\\nCURRENT USER MESSAGE:\\n" + message.strip()
+    response = generate(db_path, system, prompt, json_mode=True)
+    raw = response.get("content", "").strip()
+    if raw.startswith("```"):
+        raw = raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+    try:
+        data = json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        start, end = raw.find("{"), raw.rfind("}")
+        try:
+            data = json.loads(raw[start:end + 1]) if start >= 0 and end > start else None
+        except json.JSONDecodeError:
+            data = None
+    if not isinstance(data, dict) or not isinstance(data.get("tasks", []), list):
+        raise RuntimeError("The selected model did not return a usable chat response. Try again or change model.")
+    reply = data.get("reply", "")
+    needs_input = data.get("needs_input", "")
+    if not isinstance(reply, str):
+        reply = ""
+    if not isinstance(needs_input, str):
+        needs_input = ""
+    tasks = data.get("tasks", [])
+    if needs_input.strip():
+        return {"reply": needs_input.strip(), "status": "needs_input",
+                "provider": response.get("provider"), "model": response.get("model")}
+    if not tasks:
+        return {"reply": reply or "I'm here. What would you like me to work on?",
+                "status": "answered", "provider": response.get("provider"), "model": response.get("model")}
+    plan = plan_run("Chat command · " + message.strip()[:90], tasks)
+    queued = submit_plan(db_path, plan["name"], plan["tasks"])
+    return {"reply": reply or "I've prepared the requested local workflow.",
+            "status": "queued", "run_id": queued["run_id"], "job_ids": queued.get("job_ids", []),
+            "tasks": plan["tasks"], "provider": response.get("provider"), "model": response.get("model"),
+            "safety": "Only allowlisted local tasks were queued. External publishing, spending and supplier orders remain disabled."}
