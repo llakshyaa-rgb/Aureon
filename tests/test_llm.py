@@ -41,6 +41,20 @@ class LLMSettingsTests(unittest.TestCase):
             save_settings(self.db, {"provider": "openai", "model": "",
                                     "api_key": "secret"})
 
+    def test_local_lm_studio_accepts_loopback_without_api_key(self):
+        saved = save_settings(self.db, {"provider": "lm_studio",
+            "base_url": "http://127.0.0.1:1234/v1", "model": "loaded-model",
+            "api_key": "", "temperature": 0.1, "max_tokens": 512})
+        self.assertEqual(saved["provider"], "lm_studio")
+        self.assertFalse(saved["api_key_set"])
+
+    def test_switching_provider_does_not_reuse_another_providers_key(self):
+        save_settings(self.db, {"provider": "openai", "model": "gpt-model",
+            "api_key": "openai-secret", "temperature": 0.2, "max_tokens": 512})
+        with self.assertRaises(ValueError):
+            save_settings(self.db, {"provider": "anthropic", "model": "claude-model",
+                "api_key": "", "temperature": 0.2, "max_tokens": 512})
+
     def test_ollama_accepts_loopback_without_api_key(self):
         saved = save_settings(self.db, {"provider": "ollama",
             "base_url": "http://127.0.0.1:11434/v1", "model": "qwen2.5:3b",
