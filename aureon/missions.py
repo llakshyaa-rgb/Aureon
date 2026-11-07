@@ -138,7 +138,7 @@ def _ai_work(db_path, payload, context):
         "listing_title (string), listing_description (string), tags (array of short strings), "
         "marketing_headline (string), marketing_copy (string), research_analysis (object with "
         "executive_summary, opportunities, risks, recommended_next_steps, confidence, "
-        "missing_evidence). Use only supplied facts. You may write creative copy, but never "
+        "missing_evidence, metrics (optional evidence-backed numeric object), and data_visuals (optional array with title and data points containing label and value). Use a chart only when supplied evidence supports a useful comparison; never invent data. Use only supplied facts. You may write creative copy, but never "
         "invent product specifications, certifications, supplier facts, demand, reviews, sales "
         "or performance. Mark assumptions and avoid guarantees. No paid/irreversible actions."
     )
