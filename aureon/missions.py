@@ -101,50 +101,33 @@ def submit_mission(db_path, body):
             "mode": "autonomous_local", "message": "Mission queued for the background worker."}
 
 
-def _ai_review(context):
-    """Optional OpenAI-compatible analyst. Facts remain grounded in supplied context."""
-    base = os.getenv("AUREON_AI_BASE_URL", "").strip()
-    key = os.getenv("AUREON_AI_API_KEY", "").strip()
-    model = os.getenv("AUREON_AI_MODEL", "").strip()
-    if not (base and key and model):
-        return {"status": "not_configured",
-                "message": "No AI provider configured. Local workflows still run; no model inference is claimed."}
-    if not base.startswith("https://"):
-        raise ValueError("AUREON_AI_BASE_URL must use HTTPS")
-    url = base.rstrip("/")
-    if not url.endswith("/chat/completions"):
-        url += "/chat/completions"
-    prompt = (
-        "You are Aureon's cautious commerce analyst. Return only valid JSON with keys "
-        "executive_summary (string), opportunities (array of strings), risks (array of strings), "
-        "recommended_next_steps (array of strings), confidence (low|medium|high). "
-        "Use only the supplied context. Never invent market demand, supplier facts, sales, "
-        "prices or citations. Clearly distinguish observed data from assumptions. "
-        "If evidence is insufficient, say so. Do not recommend spending or publishing.\n\n"
-        + json.dumps(context, ensure_ascii=False)[:18000]
+def _ai_review(db_path, context):
+    """Use the operator-selected provider; model output is advisory, never source evidence."""
+    from .llm import generate
+    system = (
+        "You are Aureon's evidence-bound commerce analyst. Use only supplied observations. "
+        "Never invent demand, supplier facts, sales, prices, costs, ratings or citations. "
+        "Label assumptions, explain uncertainty, and recommend no paid or irreversible action. "
+        "Return a JSON object with executive_summary, opportunities, risks, recommended_next_steps, "
+        "confidence (low, medium, or high), and missing_evidence."
     )
-    request = Request(url, data=json.dumps({
-        "model": model,
-        "temperature": 0.2,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {"role": "system", "content": "Be evidence-bound, conservative and explicit about uncertainty."},
-            {"role": "user", "content": prompt},
-        ],
-    }).encode("utf-8"), headers={
-        "Authorization": "Bearer " + key,
-        "Content-Type": "application/json",
-    }, method="POST")
-    with urlopen(request, timeout=45) as response:
-        raw = json.loads(response.read(1_000_000).decode("utf-8"))
-    text = raw["choices"][0]["message"]["content"]
-    if isinstance(text, list):
-        text = "".join(part.get("text", "") for part in text if isinstance(part, dict))
-    parsed = json.loads(text)
-    if not isinstance(parsed, dict):
-        raise ValueError("AI analyst returned a non-object response")
-    return {"status": "completed", "provider": base, "model": model,
-            "analysis": parsed, "warning": "AI analysis is advisory and must not be treated as verified market evidence."}
+    prompt = (
+        "Review this commerce mission context. Give practical, specific next steps. "
+        "Do not claim that attention signals prove purchase demand. Do not treat unverified "
+        "operator-entered supplier quotes as verified. Do not include unsupported numerical claims.\n\n"
+        + json.dumps(context, ensure_ascii=False)[:22000]
+    )
+    result = generate(db_path, system, prompt, json_mode=True)
+    try:
+        analysis = json.loads(result["content"])
+    except json.JSONDecodeError:
+        # Some compatible models ignore JSON mode; retain their answer as text rather than fail the mission.
+        analysis = {"executive_summary": result["content"], "format_warning": "Model did not return JSON."}
+    if not isinstance(analysis, dict):
+        analysis = {"executive_summary": str(analysis)}
+    return {"status": "completed", "provider": result["provider"], "model": result["model"],
+            "analysis": analysis,
+            "warning": "AI advice is not verified market evidence; review before acting."}
 
 
 def run_mission(db_path, payload):
@@ -216,7 +199,7 @@ def run_mission(db_path, payload):
             draft_marketing_content(payload["product_title"], payload["audience"],
                                     "instagram", payload["concept"], "Explore the collection")))
 
-    ai_review = step("AI analyst review", lambda: _ai_review({
+    ai_review = step("AI analyst review", lambda: _ai_review(db_path, {
         "product_title": payload["product_title"], "market_signals": trends,
         "supplier_comparison": comparison, "unit_economics": economics,
         "cost_assumptions": cost_source,
@@ -225,7 +208,7 @@ def run_mission(db_path, payload):
     result = {
         "mode": "autonomous_local_workflow",
         "ai_review": ai_review,
-        "planner": ("deterministic local orchestration with configured AI analyst" if isinstance(ai_review, dict) and ai_review.get("status") == "completed" else "deterministic local orchestration; no LLM is connected"),
+        "planner": ("deterministic safe workflow with AI analyst review" if isinstance(ai_review, dict) and ai_review.get("status") == "completed" else "deterministic safe workflow; configure an LLM in Settings for AI analysis"),
         "product_title": payload["product_title"],
         "status": "completed_with_warnings" if warnings else "completed",
         "steps": steps,
