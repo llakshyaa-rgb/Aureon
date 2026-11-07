@@ -110,8 +110,9 @@ def _model_size(item):
 
 def _select_openrouter_models(key, system, prompt):
     models = _openrouter_free_models(key)
-    task = (str(system) + " " + str(prompt)).lower()
-    hard = ("research", "analyze", "strategy", "compare", "forecast", "debug", "multi-step", "comprehensive", "workflow")
+    # Rank the user's actual request, not Aureon's system instructions.
+    task = str(prompt).lower()
+    hard = ("research", "analyze", "strategy", "compare", "forecast", "debug", "multi-step", "comprehensive", "evaluate", "calculate")
     easy = ("hello", "hi ", "thanks", "rewrite", "shorten", "simple", "define", "summarize")
     if len(prompt) > 4000 or any(word in task for word in hard):
         models.sort(key=lambda item: (-_model_size(item), -int(item.get("context_length") or 0)))
@@ -259,6 +260,21 @@ def generate(db_path, system, prompt, json_mode=False):
                     if isinstance(content, list):
                         content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
                     if isinstance(content, str) and content.strip():
+                        if json_mode:
+                            candidate_text = content.strip()
+                            if candidate_text.startswith("```"):
+                                candidate_text = candidate_text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+                            try:
+                                parsed = json.loads(candidate_text)
+                            except (TypeError, json.JSONDecodeError):
+                                parsed = None
+                            if not isinstance(parsed, dict):
+                                last_error = RuntimeError("OpenRouter model returned malformed JSON; trying another free model.")
+                                continue
+                            # A long command must not be accepted as a one-word non-answer.
+                            if len(prompt) > 700 and not parsed.get("tasks") and len(str(parsed.get("reply", "")).strip()) < 40 and len(str(parsed.get("needs_input", "")).strip()) < 20:
+                                last_error = RuntimeError("OpenRouter model returned an incomplete answer; trying another free model.")
+                                continue
                         break
                     last_error = RuntimeError("OpenRouter model returned an empty response.")
                 except RuntimeError as exc:
