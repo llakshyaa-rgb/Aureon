@@ -8,13 +8,13 @@ This document distinguishes implemented local workflows, live read-only data acc
 - Automatic daily integrity-checked SQLite backups, bounded retention, manual backup and verified restore.
 - Product, opportunity, design, listing, supplier, order, support and campaign records.
 - Product economics with estimated tax, duty, return and chargeback reserves; POD/dropshipping comparison; pricing sensitivity and break-even order scenarios.
-- Evidence-backed competitor observation analysis, integrated opportunity scoring from source evidence, competitor observations and unit economics; manual quote comparisons, sample-aware supplier scorecards and quote-based itemized simulated purchase-order preparation.
+- Evidence-backed competitor observation analysis, integrated opportunity scoring from supplied evidence/observations/unit economics; manual quote comparisons, sample-aware supplier scorecards and quote-based itemized simulated purchase-order preparation. No market-wide competitor crawler is claimed.\n- Keyword-driven public Google News RSS research with source URLs, publisher names, publication timestamps, country targeting, deduplication and persisted research leads; Google Trends attention snapshots remain separate from purchase-demand evidence.
 - Local editable SVG creative studio with five styles, five palettes, saved assets, multi-style collections, print-size checks and illustrative flat mockups.
 - Persistent A/B marketing experiments with per-variant observations and descriptive comparison; no statistical significance claims or publishing.
 - Collected Google Trends snapshot history and rank movement across the latest two saved snapshots.
 - Order-aware support response drafts using locally recorded fulfillment status; responses remain unsent.
 - Period-filtered, multi-currency P&L reporting that keeps actual and estimated entries separate.
-- Dependency-aware supervised agent plans with validated earlier-step references and sequential execution, including creative collections, opportunity evaluation, channel comparison and quote-based order preparation.
+- Dependency-aware supervised agent plans with strict allowlisted task payloads, validated earlier-step references, persisted step outputs, bounded recovery and sequential execution.\n- Objective-driven commerce missions that combine public trend/news discovery, saved supplier quote comparison, local unit economics, product records, editable SVG artwork, listing drafts, launch copy and AI evidence analysis. Mission checkpoints and idempotency keys prevent completed local record/artwork steps from being duplicated after a process interruption.
 - Draft generation for design briefs, listings, marketing and support.
 - Campaign observations and CTR, conversion, CPA and ROAS calculations.
 - Actual-versus-estimated finance ledger, manual reconciliation and scenario cash-flow projections.
@@ -56,7 +56,7 @@ Provider code is committed, but credentials must be configured locally and each 
 - External AI image generation, raster export, production mockups, and provider-specific print-file QA. Local SVG generation and basic size/safe-area checks are implemented.
 - Connected customer inboxes, sending customer replies, social publishing or ad buying.
 - Bank/payment feeds, live tax and FX providers, accounting exports.
-- Crash-resumable dependency-aware agent step checkpoints, cloud execution, remote access or production hosting. Agent plans run as single-attempt jobs to avoid replaying already-created local records.
+- Independent marketplace crawling and verified competitor price/saturation collection. Competitor analysis accepts supplied observations only.\n- Verified supplier stock, quality, delivery performance or live quotes unless a provider integration supplies them. Manual supplier quotes remain unverified.\n- Cloud execution, remote access or production hosting. The local mission/agent worker checkpoints supported local steps; ambiguous external writes remain approval-gated and are not automatically replayed.
 - Fully autonomous commercial decision-making. External spending, publishing and customer commitments remain human-controlled.
 
 ## Security and operation
@@ -69,7 +69,7 @@ Provider code is committed, but credentials must be configured locally and each 
 
 ## Verification
 
-The repository currently contains 91 test cases covering the local core, workflows, trend collection/history, worker retry behavior, Shopify and Printify validation, creative assets, competitor analysis, pricing scenarios, P&L, A/B experiments, backups and dependency-aware agent plans. The latest additions have not been run in the target Termux environment. Run:
+The test suite covers the local core, workflows, trend collection/history, keyword research, worker retry/recovery behavior, Shopify and Printify validation, creative assets, competitor analysis, pricing scenarios, P&L, A/B experiments, backups and dependency-aware agent plans. The newest additions have not been executed in the target Termux environment. Run:
 
     git pull --ff-only
     python -m unittest discover -s tests -v
