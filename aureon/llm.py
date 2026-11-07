@@ -8,6 +8,7 @@ import os
 import tempfile
 from pathlib import Path
 from urllib.request import Request, urlopen
+from urllib.parse import urlsplit, quote
 from urllib.error import HTTPError, URLError
 
 PROVIDERS = {
@@ -82,11 +83,13 @@ def save_settings(db_path, body):
     if not base_url or len(base_url) > 500:
         raise ValueError("Base URL is required.")
     local_providers = {"ollama", "lm_studio"}
+    parsed_url = urlsplit(base_url)
+    is_loopback = parsed_url.scheme == "http" and parsed_url.hostname in {"127.0.0.1", "localhost", "::1"}
     if provider in local_providers:
-        if not (base_url.startswith("http://127.0.0.1") or base_url.startswith("http://localhost")):
+        if not is_loopback:
             raise ValueError("Local model providers must use a loopback URL.")
-    elif provider == "custom" and base_url.startswith("http://"):
-        if not (base_url.startswith("http://127.0.0.1") or base_url.startswith("http://localhost")):
+    elif provider == "custom" and parsed_url.scheme == "http":
+        if not is_loopback:
             raise ValueError("Custom HTTP endpoints are allowed only on localhost; cloud endpoints must use HTTPS.")
     elif not base_url.startswith("https://"):
         raise ValueError("Cloud provider endpoints must use HTTPS.")
@@ -163,7 +166,7 @@ def generate(db_path, system, prompt, json_mode=False):
     elif protocol == "gemini":
         if not key:
             raise RuntimeError("Gemini API key is missing.")
-        result = _request_json(base + "/models/" + model + ":generateContent?key=" + key, {
+        result = _request_json(base + "/models/" + quote(model, safe="") + ":generateContent?key=" + quote(key, safe=""), {
             "systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": data.get("temperature", 0.2),
