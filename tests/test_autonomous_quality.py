@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from aureon.db import initialize, connect, json_dump
-from aureon.workflows import initialize_workspace
+from aureon.workflows import initialize_workspace, create_record
 from aureon.intelligence.product_research import analyze_competition
 from aureon.creative import validate_svg_artwork
 from aureon.agents import submit_plan, runtime_status, draft_plan, plan_run
@@ -72,6 +72,16 @@ class AgentExecutionRecoveryTests(unittest.TestCase):
         self.assertEqual(result["provider"], "test-provider")
         self.assertEqual(result["plan"]["tasks"][0]["kind"], "design.brief")
         self.assertTrue(result["requires_operator_review"])
+
+    def test_workspace_record_creation_is_idempotent_and_hides_internal_key(self):
+        first = create_record(self.db, "product", "Space hoodie",
+                              {"selling_price": 1499}, "draft",
+                              idempotency_key="mission:test:product")
+        second = create_record(self.db, "product", "Space hoodie",
+                               {"selling_price": 1499}, "draft",
+                               idempotency_key="mission:test:product")
+        self.assertEqual(first["id"], second["id"])
+        self.assertNotIn("_aureon_idempotency_key", second["data"])
 
     def test_plan_rejects_unsupported_payload_fields(self):
         with self.assertRaises(ValueError):
