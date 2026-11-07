@@ -62,6 +62,26 @@ class LLMSettingsTests(unittest.TestCase):
         self.assertEqual(saved["provider"], "ollama")
         self.assertFalse(saved["api_key_set"])
 
+    def test_anthropic_native_messages_api(self):
+        save_settings(self.db, {"provider": "anthropic", "model": "claude-test",
+            "api_key": "anthropic-secret", "temperature": 0.2, "max_tokens": 512})
+        with patch("aureon.llm._request_json", return_value={
+            "content": [{"type": "text", "text": "AUREON CONNECTION OK"}]}) as request:
+            result = generate(self.db, "system", "prompt")
+        self.assertEqual(result["content"], "AUREON CONNECTION OK")
+        self.assertTrue(request.call_args.args[0].endswith("/messages"))
+        self.assertEqual(request.call_args.args[2]["x-api-key"], "anthropic-secret")
+
+    def test_gemini_native_generate_content_api(self):
+        save_settings(self.db, {"provider": "gemini", "model": "gemini-test",
+            "api_key": "gemini-secret", "temperature": 0.2, "max_tokens": 512})
+        with patch("aureon.llm._request_json", return_value={
+            "candidates": [{"content": {"parts": [{"text": "AUREON CONNECTION OK"}]}}]}) as request:
+            result = generate(self.db, "system", "prompt")
+        self.assertEqual(result["content"], "AUREON CONNECTION OK")
+        self.assertIn("/models/gemini-test:generateContent", request.call_args.args[0])
+        self.assertIn("gemini-secret", request.call_args.args[0])
+
     def test_openai_compatible_generation_uses_configured_model(self):
         save_settings(self.db, {"provider": "deepseek", "model": "deepseek-chat",
             "api_key": "secret", "temperature": 0.2, "max_tokens": 512})
