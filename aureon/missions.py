@@ -130,6 +130,45 @@ def _ai_review(db_path, context):
             "warning": "AI advice is not verified market evidence; review before acting."}
 
 
+def _ai_work(db_path, payload, context):
+    """Generate usable listing/launch assets and an evidence-bound analysis."""
+    from .llm import generate
+    system = (
+        "You are Aureon's commerce operator. Return only a JSON object with keys "
+        "listing_title (string), listing_description (string), tags (array of short strings), "
+        "marketing_headline (string), marketing_copy (string), research_analysis (object with "
+        "executive_summary, opportunities, risks, recommended_next_steps, confidence, "
+        "missing_evidence). Use only supplied facts. You may write creative copy, but never "
+        "invent product specifications, certifications, supplier facts, demand, reviews, sales "
+        "or performance. Mark assumptions and avoid guarantees. No paid/irreversible actions."
+    )
+    prompt = (
+        "Prepare a useful draft listing and launch copy for this product, then assess the "
+        "evidence and economics. Use audience-appropriate language. Include practical risks "
+        "and evidence gaps.\n\nPRODUCT INPUT:\n"
+        + json.dumps(payload, ensure_ascii=False)
+        + "\n\nRESEARCH CONTEXT:\n"
+        + json.dumps(context, ensure_ascii=False)[:18000]
+    )
+    response = generate(db_path, system, prompt, json_mode=True)
+    try:
+        data = json.loads(response["content"])
+    except json.JSONDecodeError:
+        raise RuntimeError("Selected model did not return valid JSON. Try another model or lower output complexity.")
+    if not isinstance(data, dict):
+        raise RuntimeError("Selected model returned an invalid structured response.")
+    for field in ("listing_title", "listing_description", "marketing_headline", "marketing_copy"):
+        if not isinstance(data.get(field), str) or not data[field].strip():
+            raise RuntimeError("Selected model omitted required field: " + field)
+    tags = data.get("tags", [])
+    if not isinstance(tags, list) or any(not isinstance(x, str) for x in tags):
+        tags = payload["keywords"]
+    data["tags"] = [x.strip()[:80] for x in tags if x.strip()][:20]
+    data["_provider"] = response["provider"]
+    data["_model"] = response["model"]
+    return {"status": "completed", "provider": response["provider"], "model": response["model"], "assets": data}
+
+
 def run_mission(db_path, payload):
     from .trends import collect_trends
     from .suppliers import compare_supplier_quotes
@@ -175,12 +214,18 @@ def run_mission(db_path, payload):
             channel="POD / dropshipping estimate",
             selling_price=payload["selling_price"], product_cost=product_cost,
             shipping_cost=shipping_cost, currency=payload["currency"])))
+    research_context = {"market_signals": trends, "supplier_comparison": comparison,
+                        "unit_economics": economics, "cost_assumptions": cost_source}
+    ai_work = step("AI listing, launch assets and research analysis",
+                   lambda: _ai_work(db_path, payload, research_context))
+    ai_assets = ai_work.get("assets", {}) if isinstance(ai_work, dict) else {}
     product = step("Product workspace record",
         lambda: create_record(db_path, "product", payload["product_title"], {
             "product_type": payload["product_type"], "selling_price": payload["selling_price"],
             "cost": product_cost, "currency": payload["currency"],
             "vendor": best["supplier"] if best else "",
-            "description": payload["concept"], "tags": payload["keywords"],
+            "description": ai_assets.get("listing_description", payload["concept"]),
+            "tags": ai_assets.get("tags", payload["keywords"]),
             "source": "Aureon autonomous mission",
             "cost_assumption": cost_source,
         }, "research"))
@@ -188,22 +233,31 @@ def run_mission(db_path, payload):
         lambda: create_asset(db_path, title=payload["product_title"],
                              concept=payload["concept"], style=payload["style"],
                              palette=payload["palette"]))
-    listing = step("Listing draft",
-        lambda: (lambda draft: create_record(db_path, "listing", draft["title"], draft, "draft"))(
-            generate_listing_draft(
-                {"title": payload["product_title"], "features": payload["concept"]},
-                payload["audience"], payload["keywords"])))
-    marketing = step("Launch copy draft",
-        lambda: (lambda draft: create_record(db_path, "campaign",
-            "Draft · " + payload["product_title"], {"draft": draft}, "draft"))(
-            draft_marketing_content(payload["product_title"], payload["audience"],
-                                    "instagram", payload["concept"], "Explore the collection")))
-
-    ai_review = step("AI analyst review", lambda: _ai_review(db_path, {
-        "product_title": payload["product_title"], "market_signals": trends,
-        "supplier_comparison": comparison, "unit_economics": economics,
-        "cost_assumptions": cost_source,
-    }))
+    def listing_record():
+        draft = ({"title": ai_assets["listing_title"],
+                  "description": ai_assets["listing_description"],
+                  "tags": ai_assets["tags"], "audience": payload["audience"],
+                  "generated_by": "configured_llm"}
+                 if ai_assets else generate_listing_draft(
+                     {"title": payload["product_title"], "features": payload["concept"]},
+                     payload["audience"], payload["keywords"]))
+        return create_record(db_path, "listing", draft["title"], draft, "draft")
+    listing = step("Listing draft", listing_record)
+    def marketing_record():
+        draft = ({"headline": ai_assets["marketing_headline"],
+                  "copy": ai_assets["marketing_copy"], "channel": "instagram",
+                  "audience": payload["audience"], "generated_by": "configured_llm"}
+                 if ai_assets else draft_marketing_content(
+                     payload["product_title"], payload["audience"], "instagram",
+                     payload["concept"], "Explore the collection"))
+        return create_record(db_path, "campaign",
+            "Draft · " + payload["product_title"], {"draft": draft}, "draft")
+    marketing = step("Launch copy draft", marketing_record)
+    ai_review = ({"status": "completed", "provider": ai_work.get("provider"),
+                  "model": ai_work.get("model"), "analysis": ai_assets.get("research_analysis"),
+                  "warning": "AI-generated copy and analysis are drafts, not verified facts."}
+                 if ai_assets else {"status": "unavailable",
+                  "message": "AI assets unavailable; deterministic draft fallbacks were used."})
 
     result = {
         "mode": "autonomous_local_workflow",
