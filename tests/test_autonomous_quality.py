@@ -94,8 +94,10 @@ class AgentExecutionRecoveryTests(unittest.TestCase):
                          (json_dump(data), plan["run_id"]))
             conn.execute("UPDATE jobs SET status='running',attempts=1 WHERE id=?", (job["id"],))
         self.assertEqual(recover_interrupted(self.db)["requeued"], 1)
-        with patch("aureon.worker.build_design_brief", side_effect=AssertionError("completed step replayed")), \\
-             patch("aureon.worker.collect_trends", return_value={"created": 0}):
+        from contextlib import ExitStack
+        with ExitStack() as stack:
+            stack.enter_context(patch("aureon.worker.build_design_brief", side_effect=AssertionError("completed step replayed")))
+            stack.enter_context(patch("aureon.worker.collect_trends", return_value={"created": 0}))
             outcome = run_once(self.db)
         self.assertEqual(outcome["status"], "succeeded")
         states = [x["status"] for x in outcome["result"]["result"]["steps"]]
