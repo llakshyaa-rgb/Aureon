@@ -14,6 +14,10 @@ class MissionTests(unittest.TestCase):
         self.db = Path(self.temp.name) / "aureon.sqlite3"
         initialize(self.db)
         initialize_workspace(self.db)
+        self.news_patch = patch("aureon.trends.collect_keyword_research",
+                                return_value={"created": 0, "fetched": 0, "errors": [], "sources": []})
+        self.news_patch.start()
+        self.addCleanup(self.news_patch.stop)
         self.payload = {
             "product_title": "TEST - Mountain Hoodie",
             "concept": "Minimalist mountain artwork",
