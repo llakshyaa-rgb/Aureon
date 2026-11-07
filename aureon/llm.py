@@ -4,6 +4,8 @@ Secrets are stored in a local JSON file beside the SQLite database with owner-on
 permissions where supported. The HTTP API never returns the secret.
 """
 import json
+import re
+import time
 import os
 import tempfile
 from pathlib import Path
@@ -67,6 +69,58 @@ def public_settings(db_path):
     }
 
 
+
+_OPENROUTER_CACHE = {"at": 0.0, "models": []}
+
+def _openrouter_free_models(key):
+    now = time.time()
+    if _OPENROUTER_CACHE["models"] and now - _OPENROUTER_CACHE["at"] < 900:
+        return list(_OPENROUTER_CACHE["models"])
+    req = Request("https://openrouter.ai/api/v1/models", headers={"Authorization": "Bearer " + key, "Accept": "application/json", "User-Agent": "Aureon/1.0"})
+    try:
+        with urlopen(req, timeout=25) as response:
+            payload = json.loads(response.read(5000000).decode("utf-8"))
+    except Exception as exc:
+        if _OPENROUTER_CACHE["models"]:
+            return list(_OPENROUTER_CACHE["models"])
+        raise RuntimeError("Could not load OpenRouter model catalogue: " + str(exc)) from None
+    models = []
+    for item in payload.get("data", []) if isinstance(payload, dict) else []:
+        if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+            continue
+        pricing = item.get("pricing") or {}
+        try:
+            free = float(pricing.get("prompt", -1)) == 0 and float(pricing.get("completion", -1)) == 0
+        except (TypeError, ValueError):
+            free = False
+        modalities = (item.get("architecture") or {}).get("output_modalities", ["text"])
+        if (free or item["id"].endswith(":free")) and "text" in modalities:
+            models.append(item)
+    if not models:
+        raise RuntimeError("OpenRouter returned no eligible free text models.")
+    _OPENROUTER_CACHE.update({"at": now, "models": models})
+    return list(models)
+
+def _model_size(item):
+    value = (item.get("id", "") + " " + item.get("name", "")).lower()
+    match = re.search(r"(\d+(?:\.\d+)?)\s*([bm])", value)
+    if not match:
+        return 8.0
+    return float(match.group(1)) * (1000 if match.group(2) == "b" else 1)
+
+def _select_openrouter_models(key, system, prompt):
+    models = _openrouter_free_models(key)
+    task = (str(system) + " " + str(prompt)).lower()
+    hard = ("research", "analyze", "strategy", "compare", "forecast", "debug", "multi-step", "comprehensive", "workflow")
+    easy = ("hello", "hi ", "thanks", "rewrite", "shorten", "simple", "define", "summarize")
+    if len(prompt) > 4000 or any(word in task for word in hard):
+        models.sort(key=lambda item: (-_model_size(item), -int(item.get("context_length") or 0)))
+    elif len(prompt) < 500 or any(word in task for word in easy):
+        models.sort(key=lambda item: (_model_size(item), -int(item.get("context_length") or 0)))
+    else:
+        models.sort(key=lambda item: (abs(_model_size(item) - 8), -int(item.get("context_length") or 0)))
+    return models[:8]
+
 def save_settings(db_path, body):
     if not isinstance(body, dict):
         raise ValueError("settings must be an object")
@@ -82,7 +136,7 @@ def save_settings(db_path, body):
         key = previous.get("api_key", "") if previous.get("provider") == provider else ""
     if not isinstance(key, str) or len(key) > 4096:
         raise ValueError("API key must be text shorter than 4096 characters.")
-    if not model or len(model) > 240:
+    if (provider != "openrouter" and not model) or len(model) > 240:
         raise ValueError("Enter the exact model ID supplied by your provider.")
     if not base_url or len(base_url) > 500:
         raise ValueError("Base URL is required.")
@@ -155,7 +209,13 @@ def generate(db_path, system, prompt, json_mode=False):
     model = data.get("model", "")
     key = data.get("api_key", "")
     base = data.get("base_url", info["base_url"]).rstrip("/")
-    if not model:
+    candidates = []
+    if provider == "openrouter":
+        if not key:
+            raise RuntimeError("OpenRouter API key is missing.")
+        candidates = _select_openrouter_models(key, system, prompt)
+        model = candidates[0]["id"]
+    elif not model:
         raise RuntimeError("Set a model ID in Aureon Settings first.")
     protocol = info["protocol"]
     if protocol == "anthropic":
@@ -188,10 +248,28 @@ def generate(db_path, system, prompt, json_mode=False):
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
         headers = {"Authorization": "Bearer " + key} if key else {}
-        result = _request_json(base + "/chat/completions", payload, headers)
-        content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-        if isinstance(content, list):
-            content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
+        if provider == "openrouter":
+            last_error = None
+            for candidate in candidates:
+                model = candidate["id"]
+                payload["model"] = model
+                try:
+                    result = _request_json(base + "/chat/completions", payload, headers)
+                    content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if isinstance(content, list):
+                        content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
+                    if isinstance(content, str) and content.strip():
+                        break
+                    last_error = RuntimeError("OpenRouter model returned an empty response.")
+                except RuntimeError as exc:
+                    last_error = exc
+            else:
+                raise RuntimeError("All tried OpenRouter free models failed. Last error: " + str(last_error))
+        else:
+            result = _request_json(base + "/chat/completions", payload, headers)
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            if isinstance(content, list):
+                content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError("LLM provider returned an empty response.")
     return {"provider": provider, "model": model, "content": content.strip()}
