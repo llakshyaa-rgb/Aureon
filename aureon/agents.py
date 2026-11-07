@@ -143,6 +143,7 @@ def draft_plan(db_path, objective, context=None):
         "tasks is an array of 1-12 objects with kind, payload, and optional depends_on indexes. "
         "Only choose these safe local task kinds and exact payload fields: " +
         json.dumps({k: sorted(v) for k, v in ALLOWED.items()}) +
+        ". When the objective is to research and prepare a product launch, prefer one commerce.mission task over separate disconnected tasks. "
         ". A commerce.mission task executes Aureon's complete local product workflow and must include every required payload field. "
         + "Never add shell, network publishing, ad spend, payments, supplier ordering, customer messaging, "
         "deletion, or account changes. Do not fabricate observations or evidence. If inputs are missing, "
@@ -191,7 +192,8 @@ def chat_command(db_path, message, history=None):
         "For a clear request to do work, create a short dependency-aware task plan using ONLY "
         "these allowlisted local task kinds and exact payload fields: "
         + json.dumps({k: sorted(v) for k, v in ALLOWED.items()})
-        + ". For commerce.mission, provide all required product inputs and include optional fee assumptions only when the user supplied them. "
+        + ". For a request to research and prepare a product or product launch, prefer ONE commerce.mission task instead of splitting it into disconnected small tasks. "
+        + "For commerce.mission, provide all required product inputs and include optional fee assumptions only when the user supplied them. "
         + "A commerce.mission runs Aureon's complete local product workflow: live trends/news collection, supplied competitor URL review, saved supplier-quote comparison, unit economics, product record, editable artwork, listing and launch-copy drafts, plus AI research analysis. "
         + "Use conservative explicit assumptions only where the mission code defines defaults; never invent evidence, supplier quotes, market demand, prices, stock, sales, or credentials. "
         "If essential input is missing, ask ONE concise question in needs_input and do not create tasks. "
