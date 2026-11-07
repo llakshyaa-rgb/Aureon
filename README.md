@@ -51,7 +51,10 @@ python -m aureon.cli restore data/backups/aureon-YYYYMMDD-HHMMSS-ffffff.sqlite3
 
 ## Live integrations
 
-### Optional AI analyst\nSet `AUREON_AI_BASE_URL` to an HTTPS OpenAI-compatible chat-completions base URL, `AUREON_AI_API_KEY` to the provider key and `AUREON_AI_MODEL` to a supported model. The model receives only the mission context and returns an advisory JSON analysis; it is not treated as a source of verified market facts. Without all three settings, the local mission still runs but the AI analyst step is marked not configured. Keep credentials only in the local `.env` file.\n\n### Google Trends
+### Optional AI analyst
+Set `AUREON_AI_BASE_URL` to an HTTPS OpenAI-compatible chat-completions base URL, `AUREON_AI_API_KEY` to the provider key and `AUREON_AI_MODEL` to a supported model. The model receives only the mission context and returns an advisory JSON analysis; it is not treated as a source of verified market facts. Without all three settings, the local mission still runs but the AI analyst step is marked not configured. Keep credentials only in the local `.env` file.
+
+### Google Trends
 Public Trending RSS by country code. Fetch trends in the dashboard, or save unique signals as research-stage opportunity records. Trend attention is not proof of product demand or sales.
 
 ### Shopify
@@ -89,7 +92,10 @@ A provider token being present only means credentials are configured. Use the da
 - GET /api/agents, POST /api/agents/plans, POST /api/missions, GET /api/missions/{job_id}
 - GET /api/command-center, POST /api/commands/interpret
 
-## Important autonomy boundaries\nMissions currently orchestrate a fixed, deterministic sequence; they are not yet a general-purpose autonomous AI that can invent and execute arbitrary plans. The optional AI analyst reviews collected context but does not choose tools or control the worker. Supplier quote data remains operator-entered, and external actions stay approval-gated or unavailable.\n\n## Not yet a fully autonomous commerce operator
+## Important autonomy boundaries
+Missions currently orchestrate a fixed, deterministic sequence; they are not yet a general-purpose autonomous AI that can invent and execute arbitrary plans. The optional AI analyst reviews collected context but does not choose tools or control the worker. Supplier quote data remains operator-entered, and external actions stay approval-gated or unavailable.
+
+## Not yet a fully autonomous commerce operator
 
 WooCommerce, Printful and Gelato are not connected. Printify product creation is approval-gated and remains unpublished; Printify order submission and fulfillment are not enabled. Shopify product publication, payment processing, inventory synchronization and order fulfillment are not enabled. Supplier quotes remain manually entered unless separately verified. Customer inboxes, customer messaging, social publishing, ad buying, bank feeds, tax and FX providers are not connected.
 
