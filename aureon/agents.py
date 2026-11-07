@@ -76,7 +76,7 @@ def submit_plan(db_path, name, tasks, idempotency_key=None):
                 if existing_data.get("name") != plan["name"] or existing_data.get("tasks") != plan["tasks"]:
                     raise ValueError("idempotency_key already belongs to a different agent plan")
                 return {"run_id": row["id"], "duplicate": True}
-    job = enqueue(db_path, "agent.run", {"plan": plan}, key, max_attempts=1)
+    job = enqueue(db_path, "agent.run", {"plan": plan}, key, max_attempts=2)
     with connect(db_path) as conn:
         existing_rows = conn.execute("SELECT id,data_json FROM workspace_records WHERE kind='agent_run'").fetchall()
         for existing in existing_rows:
