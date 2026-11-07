@@ -384,26 +384,44 @@ def run_mission(db_path, payload):
             other_costs=payload["other_costs"], duty_cost=payload["duty_cost"],
             tax_rate=payload["tax_rate"], return_rate=payload["return_rate"],
             chargeback_rate=payload["chargeback_rate"], currency=payload["currency"])))
-    # A checkpoint created by an older build may not contain the current report schema.
-    # Recompute from the same local inputs rather than letting a stale checkpoint crash
-    # the mission's reporting stage.
-    required_economics = {
-        "selling_price", "fulfilment_cost", "platform_fee", "payment_fee",
-        "estimated_tax", "return_reserve", "chargeback_reserve",
-        "advertising_cost", "other_costs", "estimated_profit",
-        "profit_margin", "break_even_ad_cost",
-    }
-    if not isinstance(economics, dict) or not required_economics.issubset(economics):
-        economics = calculate_unit_economics(Offer(
-            channel="POD / dropshipping estimate",
-            selling_price=payload["selling_price"], product_cost=product_cost,
-            shipping_cost=shipping_cost, packaging_cost=payload["packaging_cost"],
-            platform_fee_rate=payload["platform_fee_rate"], payment_fee_rate=payload["payment_fee_rate"],
-            payment_fixed_fee=payload["payment_fixed_fee"], estimated_ad_cost=payload["estimated_ad_cost"],
-            other_costs=payload["other_costs"], duty_cost=payload["duty_cost"],
-            tax_rate=payload["tax_rate"], return_rate=payload["return_rate"],
-            chargeback_rate=payload["chargeback_rate"], currency=payload["currency"]))
-        warnings.append("An older economics checkpoint was refreshed using the current local calculator.")
+    # Normalize older or partial calculator checkpoints before the report consumes them.
+    # Preserve valid calculated values, but derive absent fields from the explicit local
+    # inputs so a partial saved result cannot crash the mission.
+    if isinstance(economics, dict):
+        price = float(economics.get("selling_price", payload["selling_price"]))
+        fulfilment = float(economics.get("fulfilment_cost",
+            product_cost + shipping_cost + payload["packaging_cost"] + payload["duty_cost"]))
+        platform_fee = float(economics.get("platform_fee", price * payload["platform_fee_rate"]))
+        payment_fee = float(economics.get("payment_fee",
+            price * payload["payment_fee_rate"] + payload["payment_fixed_fee"]))
+        estimated_tax = float(economics.get("estimated_tax", price * payload["tax_rate"]))
+        return_reserve = float(economics.get("return_reserve", price * payload["return_rate"]))
+        chargeback_reserve = float(economics.get("chargeback_reserve", price * payload["chargeback_rate"]))
+        advertising_cost = float(economics.get("advertising_cost", payload["estimated_ad_cost"]))
+        other_costs_value = float(economics.get("other_costs", payload["other_costs"]))
+        total_cost = float(economics.get("total_cost", fulfilment + platform_fee + payment_fee +
+            estimated_tax + return_reserve + chargeback_reserve + advertising_cost + other_costs_value))
+        profit = float(economics.get("estimated_profit", price - total_cost))
+        economics = {
+            **economics,
+            "channel": economics.get("channel", "POD / dropshipping estimate"),
+            "currency": economics.get("currency", payload["currency"]),
+            "selling_price": round(price, 2),
+            "fulfilment_cost": round(fulfilment, 2),
+            "platform_fee": round(platform_fee, 2),
+            "payment_fee": round(payment_fee, 2),
+            "estimated_tax": round(estimated_tax, 2),
+            "return_reserve": round(return_reserve, 2),
+            "chargeback_reserve": round(chargeback_reserve, 2),
+            "advertising_cost": round(advertising_cost, 2),
+            "other_costs": round(other_costs_value, 2),
+            "total_cost": round(total_cost, 2),
+            "estimated_profit": round(profit, 2),
+            "profit_margin": float(economics.get("profit_margin", profit / price if price else 0)),
+            "break_even_ad_cost": round(float(economics.get("break_even_ad_cost",
+                max(0.0, price - fulfilment - platform_fee - payment_fee - estimated_tax -
+                    return_reserve - chargeback_reserve - other_costs_value))), 2),
+        }
     research_context = {
         "market_signals": trends, "keyword_news_research": news_research,
         "public_competitor_observations": competitor_research,
