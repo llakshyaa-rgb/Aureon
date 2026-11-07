@@ -259,53 +259,6 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
  .chat-compose{align-items:stretch}.chat-compose button{min-width:74px;padding:8px}
  .page-section{padding:15px 12px!important}
 }
-/* Ensure secondary widgets and inline cards follow the same dark palette. */
-.ai-bullet,.ai-kpi,.ai-chart,.data-value-bool,.data-value-bool.yes,.data-value-bool.no,
-.finance-breakdown,.finance-footnote,.runtime-steps,.runtime-state,.status-pill,
-.data-table tr:hover td,.data-table th,.data-table td,.result-warning{
- background-color:#203650!important;color:#DCEBFA!important;border-color:rgba(151,180,216,.2)!important
-}
-.ai-bullet:before,.ai-bar-fill{background:#438BFA!important}
-.ai-bar-track{background:#0E1A2A!important}
-.ai-confidence,.pill{background:rgba(67,139,250,.18)!important;color:#A9CEFF!important}
-.status-succeeded,.status-approved,.status-completed,.status-resolved,.runtime-state.succeeded{background:#173D37!important;color:#8BE0BC!important}
-.status-failed,.status-rejected,.status-cancelled,.runtime-state.failed{background:#492B36!important;color:#FFB2BC!important}
-.status-running,.status-in_transit,.status-processing,.runtime-state.running{background:#1E3C68!important;color:#A9CEFF!important}
-.status-pending,.status-queued,.status-draft{background:#4A3A25!important;color:#F5D59B!important}
-.overview-tool-panel .result-note{background:#203650!important;color:#DCEBFA!important}
-/* Final mobile-first dark workspace overrides: no pale cards or clipped navigation. */
-:root{color-scheme:dark!important;--ink:#E7F0FC;--paper:#0B1421;--blue:#438BFA;--line:rgba(151,180,216,.19);--muted:#A0B2C9;--white:#EAF2FC;--accent-soft:rgba(67,139,250,.16);--surface:#192A40;--surface-alt:#20344D}
-html,body{background:#0B1421!important;color:#E7F0FC!important}
-body{background:radial-gradient(ellipse at 88% 0%,rgba(67,139,250,.12),transparent 36%),#0B1421!important}
-.page-section,.overview-tool-panel,.pm-editor,.data-card,.data-row,.record-card,.pm-card,.finance-currency-card,.runtime-run,.runtime-stat,.compact-row,.ai-section,.ai-details,.data-table-wrap{background:#17283D!important;color:#E7F0FC!important;border-color:rgba(151,180,216,.2)!important}
-.page-section{background:linear-gradient(145deg,#14243A,#192D45)!important}
-.overview-tool-panel{display:block;min-width:0;padding:20px;border:1px solid rgba(151,180,216,.2);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
-.overview-tools{display:grid;gap:14px;margin:22px 0}
-.overview-tools-heading{padding:0 2px}
-.overview-tools-heading>span{font-size:10px;letter-spacing:.14em;font-weight:800;color:#8DBBFF}
-.overview-tools-heading p{margin:5px 0 0;color:#A0B2C9;font-size:12px}
-.overview-tool-panel h2{margin-top:0}
-input,textarea,select{background:#0E1A2A!important;color:#E7F0FC!important;border-color:rgba(151,180,216,.25)!important}
-input::placeholder,textarea::placeholder{color:#7F94AE!important}
-input:focus,textarea:focus,select:focus{background:#13243A!important;border-color:#438BFA!important;box-shadow:0 0 0 3px rgba(67,139,250,.2)!important}
-button{background:#347FE8!important;color:#fff!important;border-color:rgba(104,164,255,.28)!important}
-button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],button[onclick*="compare"],button[onclick*="Compare"]{background:#203751!important;color:#DCEBFF!important}
-.result-note,.empty,.runtime-step,.section-tab,.status-pill{background:#203650!important;color:#DCEBFA!important;border-color:rgba(151,180,216,.2)!important}
-.metric-card{background:#0E1B2D!important;color:#EAF2FC!important}
-.data-table th{background:#203650!important;color:#B9CBE1!important}.data-table td{color:#E0EAF7!important}
-@media(max-width:850px){
- .nav-list{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;width:100%;overflow:visible!important}
- .nav-item{width:100%;min-width:0;max-width:100%;white-space:normal!important;overflow-wrap:anywhere;justify-content:flex-start;min-height:42px;padding:9px 10px!important}
- .section-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;width:100%;overflow:visible!important;padding:0!important}
- .section-tab{width:100%;min-width:0;white-space:normal!important;overflow-wrap:anywhere;min-height:40px;padding:8px!important}
- .overview-launchpad{grid-template-columns:1fr!important}
- .overview-tool-panel{padding:15px 12px}
- .overview-tool-panel .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:9px}
- .overview-tool-panel .grid>*{width:100%;min-width:0}
- .overview-tool-panel textarea{width:100%;max-width:100%}
- .main{padding:14px 10px 32px!important}
- .page-section{padding:14px 10px!important}
-}
 </style></head><body><div class="app-shell"><aside class="sidebar">
 <div class="brand"><div class="brand-mark">A</div><div><strong>AUREON</strong><small>Commerce workspace</small></div></div>
 <div><div class="nav-label">Workspace</div><nav class="nav-list" aria-label="Main sections">
