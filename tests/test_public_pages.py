@@ -58,6 +58,32 @@ class PublicProductPageTests(unittest.TestCase):
         self.assertEqual(records[0]["data"]["competitor_observation"]["currency"], "INR")
         self.assertEqual(records[0]["data"]["research_status"], "unverified_public_listing_observation")
 
+    def test_competitor_url_research_collects_partial_success_and_currency_benchmarks(self):
+        from aureon.public_pages import research_competitor_urls
+        pages = [
+            {"observation": {"title": "Bottle A", "price": 500.0, "currency": "INR", "source_url": "https://shop.example/a"}},
+            {"observation": {"title": "Bottle B", "price": 700.0, "currency": "INR", "source_url": "https://shop.example/b"}},
+        ]
+        with patch("aureon.public_pages.research_public_product_page", side_effect=[pages[0], RuntimeError("blocked"), pages[1]]):
+            result = research_competitor_urls(self.db, ["https://shop.example/a", "https://shop.example/blocked", "https://shop.example/b"])
+        self.assertEqual(result["requested"], 3)
+        self.assertEqual(len(result["observed"]), 2)
+        self.assertEqual(len(result["errors"]), 1)
+        benchmark = result["price_benchmarks"]["by_currency"]["INR"]
+        self.assertEqual(benchmark["minimum_price"], 500.0)
+        self.assertEqual(benchmark["median_price"], 600.0)
+        self.assertEqual(benchmark["maximum_price"], 700.0)
+
+    def test_competitor_research_never_combines_currencies(self):
+        from aureon.public_pages import research_competitor_urls
+        with patch("aureon.public_pages.research_public_product_page", side_effect=[
+            {"observation": {"title": "A", "price": 10.0, "currency": "USD"}},
+            {"observation": {"title": "B", "price": 900.0, "currency": "INR"}},
+        ]):
+            result = research_competitor_urls(self.db, ["https://a.example/p", "https://b.example/p"])
+        self.assertEqual(set(result["price_benchmarks"]["by_currency"]), {"USD", "INR"})
+        self.assertEqual(result["price_benchmarks"]["by_currency"]["USD"]["listing_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
