@@ -1,5 +1,10 @@
+import json
+import tempfile
 import unittest
-from aureon.agents import plan_run
+from pathlib import Path
+from unittest.mock import patch
+from aureon.agents import plan_run, chat_command
+from aureon.db import initialize
 
 class AgentPlanTests(unittest.TestCase):
     def mission(self):
@@ -44,6 +49,41 @@ class AgentPlanTests(unittest.TestCase):
         del task["payload"]["audience"]
         with self.assertRaisesRegex(ValueError, "missing audience"):
             plan_run("Create shirt", [task])
+
+
+    def test_chat_queues_full_mission_and_deduplicates_current_message(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = Path(directory) / "aureon.sqlite3"
+            initialize(db)
+            message = ("Create an astronomy T-shirt for students in India. "
+                       "Selling price 699 INR, product cost 280 INR, shipping 60 INR. "
+                       "Make the design, listing, economics and marketing drafts.")
+            task = self.mission()
+            response = {"content": json.dumps({
+                "reply": "I'll prepare the product workflow and save the local drafts.",
+                "tasks": [task], "needs_input": ""
+            }), "provider": "test", "model": "test-model"}
+            with patch("aureon.llm.generate", return_value=response) as generate:
+                result = chat_command(db, message, [
+                    {"role": "user", "content": message}
+                ])
+            self.assertEqual(result["status"], "queued")
+            prompt = generate.call_args.args[2]
+            self.assertEqual(prompt.count(message), 1)
+
+    def test_chat_rejects_unhelpful_short_response_to_long_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = Path(directory) / "aureon.sqlite3"
+            initialize(db)
+            message = ("Please research and create a complete product launch workflow "
+                       "with design, pricing, listing and marketing drafts.")
+            response = {"content": json.dumps({
+                "reply": "interests", "tasks": [], "needs_input": ""
+            }), "provider": "test", "model": "test-model"}
+            with patch("aureon.llm.generate", return_value=response):
+                with self.assertRaisesRegex(RuntimeError, "incomplete answer"):
+                    chat_command(db, message)
+
 
 if __name__ == "__main__":
     unittest.main()
