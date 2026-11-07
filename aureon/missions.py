@@ -82,6 +82,26 @@ def submit_mission(db_path, body):
     key = body.get("idempotency_key") or "mission-" + uuid.uuid4().hex
     if not isinstance(key, str) or not key.strip() or len(key) > 180:
         raise ValueError("invalid idempotency key")
+    # Check the durable mission record before enqueue: its job payload includes run_id
+    # after initial submission, so enqueue's strict payload comparison cannot be used
+    # as the first duplicate check on a repeated HTTP request.
+    with connect(db_path) as conn:
+        existing_rows = conn.execute(
+            "SELECT id,data_json FROM workspace_records WHERE kind='agent_run'").fetchall()
+        for row in existing_rows:
+            data = json.loads(row["data_json"])
+            if data.get("idempotency_key") != key:
+                continue
+            job_ids = data.get("job_ids") or []
+            existing_job = conn.execute("SELECT payload_json FROM jobs WHERE id=?",
+                                        (job_ids[0],)).fetchone() if job_ids else None
+            old_payload = json.loads(existing_job["payload_json"]) if existing_job else None
+            if isinstance(old_payload, dict):
+                old_payload.pop("run_id", None)
+            if old_payload != payload:
+                raise ValueError("idempotency_key already belongs to a different mission request")
+            return {"run_id": row["id"], "job_id": job_ids[0] if job_ids else None,
+                    "duplicate": True}
     job = enqueue(db_path, "commerce.mission", payload, key, max_attempts=2)
     with connect(db_path) as conn:
         existing = conn.execute(
