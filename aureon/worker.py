@@ -70,6 +70,23 @@ def process_job(job,db_path=None):
   states=["pending"]*len(plan["tasks"])
   warnings=[]
   progress=[]
+  if run_id is not None:
+   with connect(db_path) as conn:
+    saved=conn.execute("SELECT data_json FROM workspace_records WHERE id=? AND kind='agent_run'",(run_id,)).fetchone()
+    if saved:
+     prior=json.loads(saved["data_json"])
+     saved_states=prior.get("step_states",[])
+     saved_outputs=prior.get("step_outputs",[])
+     for i in range(min(len(states),len(saved_states))):
+      if saved_states[i]=="succeeded" and i<len(saved_outputs):
+       states[i]="succeeded";outputs[i]=saved_outputs[i]
+      elif saved_states[i] in {"failed","skipped"}:
+       states[i]=saved_states[i]
+      elif saved_states[i]=="running":
+       states[i]="failed"
+       warnings.append("Step "+str(i)+" was interrupted while running; it was not replayed automatically to avoid duplicate side effects.")
+     warnings.extend(x for x in prior.get("warnings",[]) if x not in warnings)
+     progress=list(prior.get("progress",[]))
   def persist(step_index,state,error=None):
    item={"step":step_index,"kind":plan["tasks"][step_index]["kind"],"status":state}
    if error:item["error"]=str(error)[:500]
@@ -80,6 +97,8 @@ def process_job(job,db_path=None):
      if row:
       data=json.loads(row["data_json"])
       data["progress"]=list(progress)
+      data["step_states"]=list(states)
+      data["step_outputs"]=list(outputs)
       data["current_step"]=plan["tasks"][step_index]["kind"] if state=="running" else None
       data["completed_steps"]=sum(x in {"succeeded","failed","skipped"} for x in states)
       data["warnings"]=list(warnings)
@@ -100,6 +119,8 @@ def process_job(job,db_path=None):
    return value
   for step in plan["tasks"]:
    idx=step["step"]
+   if states[idx] in {"succeeded","failed","skipped"}:
+    continue
    if any(states[dep]!="succeeded" for dep in step.get("depends_on",[])):
     states[idx]="skipped"
     warnings.append("Step "+str(idx)+" skipped because a dependency failed.")
