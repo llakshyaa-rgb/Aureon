@@ -5,7 +5,7 @@ signal only; it is not proof of product demand, sales, or supplier availability.
 """
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 import re
 import json
@@ -112,10 +112,12 @@ def fetch_keyword_news(keywords, geo="IN", limit=20, timeout=12):
             published = (node.findtext("pubDate") or "").strip()
             source_node = node.find("source")
             source = (source_node.text or "").strip() if source_node is not None else ""
-            if not title or not link or not link.startswith("https://"):
+            parsed_link = urlparse(link)
+            if (not title or not link or parsed_link.scheme != "https" or not parsed_link.netloc
+                    or parsed_link.username or parsed_link.password or len(link) > 2000):
                 continue
-            items.append({"keyword": keyword, "title": title, "url": link,
-                          "published_at": published, "source": source})
+            items.append({"keyword": keyword, "title": title[:500], "url": link,
+                          "published_at": published[:120], "source": source[:120]})
     unique = []
     seen = set()
     for item in items:
