@@ -68,6 +68,59 @@ class MissionTests(unittest.TestCase):
         self.assertTrue(result["ai_review"]["analysis"]["data_visuals"])
         self.assertEqual(result["ai_review"]["analysis"]["metrics"]["estimated_profit"], 729)
 
+    def test_interrupted_mission_resumes_without_duplicate_product_record(self):
+        from contextlib import ExitStack
+        from aureon.jobs import list_jobs
+        from aureon.workflows import create_record as real_create_record
+
+        submitted = submit_mission(self.db, {**self.payload, "idempotency_key": "mission-checkpoint"})
+        job_payload = list_jobs(self.db)[0]["payload"]
+        first_product_write = {"crash": True}
+
+        def create_then_interrupt(*args, **kwargs):
+            record = real_create_record(*args, **kwargs)
+            if args[1] == "product" and first_product_write["crash"]:
+                first_product_write["crash"] = False
+                raise KeyboardInterrupt("simulated process termination after database commit")
+            return record
+
+        ai = {"status": "completed", "provider": "test", "model": "test",
+              "assets": {"listing_title": "Draft listing", "listing_description": "Draft",
+                         "tags": ["mountain"], "marketing_headline": "Launch",
+                         "marketing_copy": "Draft copy", "research_analysis": {}}}
+        news = {"created": 0, "fetched": 0, "errors": [], "sources": []}
+        quotes = {"quotes": [], "best_quote": None}
+
+        with ExitStack() as stack:
+            stack.enter_context(patch("aureon.trends.collect_trends", return_value={"created": 0}))
+            stack.enter_context(patch("aureon.trends.collect_keyword_research", return_value=news))
+            stack.enter_context(patch("aureon.suppliers.compare_supplier_quotes", return_value=quotes))
+            stack.enter_context(patch("aureon.missions._ai_work", return_value=ai))
+            stack.enter_context(patch("aureon.creative.create_asset",
+                                       return_value={"record": {"id": 999}, "artwork": {"qa": {"passed": True}}}))
+            stack.enter_context(patch("aureon.workflows.create_record", side_effect=create_then_interrupt))
+            with self.assertRaises(KeyboardInterrupt):
+                run_mission(self.db, job_payload)
+
+        with ExitStack() as stack:
+            stack.enter_context(patch("aureon.trends.collect_trends",
+                                      side_effect=AssertionError("completed trends step replayed")))
+            stack.enter_context(patch("aureon.trends.collect_keyword_research",
+                                      side_effect=AssertionError("completed news step replayed")))
+            stack.enter_context(patch("aureon.suppliers.compare_supplier_quotes",
+                                      side_effect=AssertionError("completed quote step replayed")))
+            stack.enter_context(patch("aureon.missions._ai_work",
+                                      side_effect=AssertionError("completed AI step replayed")))
+            stack.enter_context(patch("aureon.creative.create_asset",
+                                       return_value={"record": {"id": 999}, "artwork": {"qa": {"passed": True}}}))
+            result = run_mission(self.db, job_payload)
+
+        products = list_records(self.db, "product", 250)
+        self.assertEqual(len(products), 1)
+        self.assertEqual(products[0]["id"], result["outputs"]["product"]["id"])
+        self.assertEqual(result["status"], "completed_with_warnings")
+        self.assertTrue(any(step.get("resumed") for step in result["steps"]))
+
     def test_mission_accepts_optional_cost_assumptions(self):
         result = submit_mission(self.db, {**self.payload, "platform_fee_rate": 0.05,
             "payment_fee_rate": 0.02, "estimated_ad_cost": 80, "tax_rate": 0.03})
