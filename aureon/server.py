@@ -21,6 +21,7 @@ from .marketing import create_campaign,request_campaign_approval,campaign_overvi
 from .finance import record_transaction,reconcile,cashflow_projection,financial_dashboard
 from .agents import submit_plan,runtime_status
 from .missions import submit_mission
+from .llm import public_settings,save_settings,test_connection
 from .command_center import dashboard_snapshot,interpret_command
 from .trends import fetch_trending_searches,trend_history
 from .providers import shopify, printify
@@ -150,6 +151,7 @@ def make_handler(db_path):
     except ValueError as exc: return self._send(400,{"error":str(exc)})
    if path=="/api/creative/assets": return self._send(200,{"assets":list_assets(db_path)})
    if path=="/api/agents": return self._send(200,runtime_status(db_path))
+   if path=="/api/llm/settings": return self._send(200,public_settings(db_path))
    if path.startswith("/api/missions/"):
     try:
      job_id=int(path.split("/")[3])
@@ -267,6 +269,8 @@ def make_handler(db_path):
     if path=="/api/marketing/campaigns": return self._send(201,{"campaign":create_campaign(db_path,b.get("name",""),b.get("product_title",""),b.get("audience",""),b.get("channel",""),b.get("benefit",""),b.get("call_to_action",""),b.get("budget"),b.get("currency","USD"))})
     if path.startswith("/api/marketing/campaigns/") and path.endswith("/approval"):
      cid=int(path.split("/")[4]);return self._send(201,{"approval":request_campaign_approval(db_path,cid,b.get("action",""),b.get("amount"),b.get("reason","Human review required"))})
+    if path=="/api/llm/settings": return self._send(200,save_settings(db_path,b))
+    if path=="/api/llm/test": return self._send(200,test_connection(db_path))
     if path=="/api/missions": return self._send(202,submit_mission(db_path,b))
     if path=="/api/agents/plans": return self._send(201,submit_plan(db_path,b.get("name",""),b.get("tasks"),b.get("idempotency_key")))
     if path=="/api/commands/interpret": return self._send(200,interpret_command(b.get("command","")))
