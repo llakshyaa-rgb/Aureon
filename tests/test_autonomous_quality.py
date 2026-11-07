@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from aureon.db import initialize
+from aureon.db import initialize, connect, json_dump
 from aureon.workflows import initialize_workspace
 from aureon.intelligence.product_research import analyze_competition
 from aureon.creative import validate_svg_artwork
@@ -75,6 +75,32 @@ class AgentExecutionRecoveryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             plan_run("Unsafe fields", [{"kind": "trends.collect",
                 "payload": {"geo": "IN", "shell": "rm -rf /"}}])
+
+    def test_interrupted_plan_resumes_without_replaying_completed_steps(self):
+        from aureon.jobs import recover_interrupted, list_jobs
+        plan = submit_plan(self.db, "Resume test", [
+            {"kind": "design.brief", "payload": {
+                "niche": "space", "audience": "students",
+                "product_type": "tee", "style": "minimal", "concept": "planets"}},
+            {"kind": "trends.collect", "payload": {"geo": "IN"}},
+        ])
+        with connect(self.db) as conn:
+            job = conn.execute("SELECT id FROM jobs ORDER BY id DESC LIMIT 1").fetchone()
+            row = conn.execute("SELECT data_json FROM workspace_records WHERE id=?", (plan["run_id"],)).fetchone()
+            data = __import__("json").loads(row["data_json"])
+            data["step_states"] = ["succeeded", "pending"]
+            data["step_outputs"] = [{"mode": "local", "kind": "design.brief", "result": {"draft": {"saved": True}}}, None]
+            conn.execute("UPDATE workspace_records SET data_json=? WHERE id=?",
+                         (json_dump(data), plan["run_id"]))
+            conn.execute("UPDATE jobs SET status='running',attempts=1 WHERE id=?", (job["id"],))
+        self.assertEqual(recover_interrupted(self.db)["requeued"], 1)
+        with patch("aureon.worker.build_design_brief", side_effect=AssertionError("completed step replayed")), \\
+             patch("aureon.worker.collect_trends", return_value={"created": 0}):
+            outcome = run_once(self.db)
+        self.assertEqual(outcome["status"], "succeeded")
+        states = [x["status"] for x in outcome["result"]["result"]["steps"]]
+        self.assertEqual(states, ["succeeded", "succeeded"])
+        self.assertEqual(list_jobs(self.db)[0]["attempts"], 2)
 
     def test_independent_steps_continue_and_persist_after_one_failure(self):
         plan = submit_plan(self.db, "Partial recovery test", [
