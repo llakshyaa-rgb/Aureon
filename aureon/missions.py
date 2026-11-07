@@ -340,7 +340,11 @@ def run_mission(db_path, payload):
         "market_signals": trends, "keyword_news_research": news_research, "supplier_comparison": comparison,
         "selected_supplier_quote": best, "unit_economics": economics,
         "cost_assumptions": cost_source,
-        "market_signal_limitations": "Trend attention is not purchase intent or demand proof.",
+        "competition_assessment": {
+            "status": "not_assessed",
+            "reason": "No verified competitor price observations or marketplace crawl were supplied. News and trend results are not substitutes for competitor pricing.",
+        },
+        "market_signal_limitations": "Trend attention and news coverage are discovery signals, not purchase intent or demand proof.",
         "supplier_limitations": "Quotes are operator-entered; freshness is not independent verification.",
     }
     ai_work = step("AI listing, launch assets and research analysis",
@@ -421,6 +425,14 @@ def run_mission(db_path, payload):
         analysis.setdefault("metrics", {})
         analysis.setdefault("data_visuals", [])
     analysis["financial_breakdown"] = economics or {}
+    analysis["competition_assessment"] = {
+        "status": "not_assessed",
+        "reason": "Aureon has not collected verified competitor price observations for this mission. No competition score is inferred from news or trends.",
+    }
+    if "Verified competitor pricing and offer comparison" not in analysis.get("missing_evidence", []):
+        analysis.setdefault("missing_evidence", []).append("Verified competitor pricing and offer comparison")
+    if "Independent product-demand and purchase-intent evidence" not in analysis.get("missing_evidence", []):
+        analysis.setdefault("missing_evidence", []).append("Independent product-demand and purchase-intent evidence")
     if ai_assets:
         ai_review = {"status": "completed", "provider": ai_work.get("provider"),
                      "model": ai_work.get("model"), "analysis": analysis,
