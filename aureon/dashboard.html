@@ -259,6 +259,31 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
  .chat-compose{align-items:stretch}.chat-compose button{min-width:74px;padding:8px}
  .page-section{padding:15px 12px!important}
 }
+
+/* Legible contrast and clear model/chat controls on the sandstone + navy + terracotta palette. */
+.page-section,.page-section p,.page-section li,.page-section label,.page-section small,
+.page-section .muted,.page-section .section-intro,.page-section .result-note,
+.page-section .worker-summary,.page-section .chat-hint{color:#18334E!important}
+.page-section h1,.page-section h2,.page-section h3,.page-section h4,.page-section strong{color:#18334E!important}
+.page-section input,.page-section textarea,.page-section select{color:#18334E!important}
+.page-section input::placeholder,.page-section textarea::placeholder{color:#536477!important;opacity:1!important}
+.chat-shell,.chat-shell .chat-top strong,.chat-shell .chat-top small,.chat-shell .chat-hint,.chat-shell .chat-status{color:#F3E8D7!important}
+.chat-shell .chat-bubble.assistant,.chat-shell .chat-bubble.assistant p{color:#18334E!important}
+.chat-shell .chat-bubble.user,.chat-shell .chat-bubble.user p{color:#18334E!important}
+.chat-actions{display:flex;align-items:center;gap:8px}
+.chat-history-menu{position:relative}
+.chat-history-menu summary{cursor:pointer;list-style:none;border-radius:9px;padding:9px 12px;background:#DCCBB2;color:#18334E;font-size:11px;font-weight:750}
+.chat-history-list{position:absolute;z-index:20;right:0;top:38px;width:min(290px,78vw);max-height:300px;overflow:auto;background:#E5D7C2;border:1px solid rgba(24,51,78,.25);border-radius:12px;padding:7px;box-shadow:0 12px 28px rgba(24,51,78,.2)}
+.chat-history-item{display:flex!important;flex-direction:column;align-items:flex-start;width:100%;text-align:left;margin:0 0 5px;padding:9px 10px!important;background:#DCCBB2!important;color:#18334E!important;box-shadow:none!important}
+.chat-history-item.active{background:#C66F52!important;color:#18334E!important}
+.chat-history-item span{font-size:12px;font-weight:750;white-space:normal}
+.chat-history-item small{font-size:10px;color:#29465F!important;margin-top:3px}
+.settings-drawer{border-color:rgba(24,51,78,.25)!important}
+.settings-drawer summary b{color:#18334E!important}
+.settings-drawer summary small{color:#29465F!important}
+.settings-drawer summary:after{content:"";display:block}
+.settings-drawer[open] .settings-arrow{transform:rotate(180deg)}
+@media(max-width:850px){.chat-history-list{right:-50px}}
 </style></head><body><div class="app-shell"><aside class="sidebar">
 <div class="brand"><div class="brand-mark">A</div><div><strong>AUREON</strong><small>Commerce workspace</small></div></div>
 <div><div class="nav-label">Workspace</div><nav class="nav-list" aria-label="Main sections">
@@ -290,9 +315,10 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
 <section class="panel page-section" id="page-products" data-title="Create product"><h2>Create product</h2><div class="grid"><input id="productTitle" placeholder="Product name"><input id="productPrice" type="number" min="0" step="0.01" placeholder="Selling price"><input id="productCurrency" value="INR" maxlength="3"><button onclick="createProduct()">Save product</button></div><pre id="productResult"></pre></section>
 <section class="panel page-section" id="page-finance-entry" data-title="Record finance transaction"><h2>Record finance transaction</h2><div class="grid"><select id="financeType"><option value="revenue">Revenue</option><option value="supplier_cost">Supplier cost</option><option value="shipping">Shipping</option><option value="advertising">Advertising</option><option value="other_cost">Other cost</option></select><input id="financeAmount" type="number" min="0" step="0.01" placeholder="Amount"><input id="financeCurrency" value="INR" maxlength="3"><input id="financeDescription" placeholder="Description"><button onclick="addFinance()">Save transaction</button></div><pre id="financeResult"></pre></section>
 <section class="panel page-section" id="page-overview" data-title="Aureon command centre">
-  <div class="command-welcome"><div><span class="launch-kicker">YOUR AI COMMERCE OPERATOR</span><h2>What should Aureon do?</h2><p>Talk normally. Describe the outcome you want; Aureon will plan supported local work, ask only when something essential is missing, and show you before it runs.</p></div><span class="operator-status"><i></i> Local worker</span></div>
+  <div class="command-welcome"><div><span class="launch-kicker">YOUR AI COMMERCE OPERATOR</span><h2>What should Aureon do?</h2><p>Talk normally. Describe the outcome you want; Aureon will plan supported local work, ask only when something essential is missing, and show you before it runs. Configure your model above to start chatting.</p></div><span class="operator-status"><i></i> Local worker</span></div>
+  <details class="settings-drawer" id="modelConnectionDrawer"><summary><span><b>AI model connection</b><small>Choose provider, model ID and API key once. Then chat with Aureon.</small></span><span class="settings-arrow">⌄</span></summary><div class="settings-drawer-body"><section class="overview-tool-panel" id="page-llm-settings" data-title="AI model settings"><h2>AI model settings</h2><p class="muted">Choose a provider and exact model ID. Keys are stored locally on this device; cloud models receive the prompts and business context you send.</p><div class="pm-editor"><div class="grid"><select id="llmProvider" onchange="llmProviderChanged()"><option value="">Loading providers…</option></select><input id="llmModel" placeholder="Exact model ID from provider"></div><div class="grid"><input id="llmBaseUrl" placeholder="API base URL for custom endpoint"></div><div class="grid"><input id="llmApiKey" type="password" autocomplete="new-password" placeholder="API key (blank keeps saved key)"></div><div class="grid"><label>Temperature<input id="llmTemperature" type="number" min="0" max="2" step="0.1" value="0.2"></label><label>Max output tokens<input id="llmMaxTokens" type="number" min="128" max="8192" step="128" value="1800"></label></div><div id="llmProviderHelp" class="result-note">Choose a provider.</div><div id="llmKeyState" class="muted">Loading key status…</div><div class="grid"><button onclick="saveLlmSettings()">Save model settings</button><button onclick="testLlmConnection()">Test connection</button></div><div id="llmSettingsResult" class="result-note">No changes made.</div></div></section></div></details>
   <div class="chat-shell">
-    <div class="chat-top"><div><strong>Aureon</strong><small>Conversational command centre</small></div><button class="chat-clear" onclick="clearAureonChat()">New chat</button></div>
+    <div class="chat-top"><div><strong>Aureon</strong><small>Conversational command centre</small></div><div class="chat-actions"><details class="chat-history-menu"><summary>History</summary><div id="aureonChatHistoryList" class="chat-history-list">No saved chats yet.</div></details><button class="chat-clear" onclick="clearAureonChat()">New chat</button></div></div>
     <div id="aureonChatMessages" class="chat-messages" aria-live="polite"><div class="chat-bubble assistant"><b>Aureon</b><p>Hey! Tell me what you want to achieve. For example: “Research a promising product for India, compare its costs, and prepare a product listing.”</p></div></div>
     <form id="aureonChatForm" class="chat-compose" onsubmit="sendAureonChat(event)"><textarea id="aureonChatInput" rows="2" maxlength="1600" placeholder="Tell Aureon what to do…" aria-label="Message Aureon"></textarea><button id="aureonChatSend" type="submit">Send <span>➤</span></button></form>
     <div class="chat-hint">Enter to send · Shift + Enter for a new line · Actions stay local and approval-gated</div>
@@ -302,7 +328,7 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
     <article class="command-card"><div class="command-card-head"><div><span class="launch-kicker">EXECUTION</span><h3>Worker activity</h3></div><button class="quiet-action" onclick="navigateTo('page-agent-runtime')">Details</button></div><div id="commandWorkerStatus" class="worker-summary">Loading worker status…</div></article>
     <article class="command-card"><div class="command-card-head"><div><span class="launch-kicker">YOUR WORKSPACE</span><h3>At a glance</h3></div><button class="quiet-action" onclick="refresh()">Refresh</button></div><div id="stats" class="data-grid"></div></article>
   </div>
-  <details class="settings-drawer"><summary><span><b>AI model connection</b><small>Choose provider, model ID and API key once. Then chat with Aureon.</small></span><span class="settings-arrow">⌄</span></summary><div class="settings-drawer-body"><section class="overview-tool-panel" id="page-llm-settings" data-title="AI model settings"><h2>AI model settings</h2><p class="muted">Choose a provider and exact model ID. Keys are stored locally on this device; cloud models receive the prompts and business context you send.</p><div class="pm-editor"><div class="grid"><select id="llmProvider" onchange="llmProviderChanged()"><option value="">Loading providers…</option></select><input id="llmModel" placeholder="Exact model ID from provider"></div><div class="grid"><input id="llmBaseUrl" placeholder="API base URL for custom endpoint"></div><div class="grid"><input id="llmApiKey" type="password" autocomplete="new-password" placeholder="API key (blank keeps saved key)"></div><div class="grid"><label>Temperature<input id="llmTemperature" type="number" min="0" max="2" step="0.1" value="0.2"></label><label>Max output tokens<input id="llmMaxTokens" type="number" min="128" max="8192" step="128" value="1800"></label></div><div id="llmProviderHelp" class="result-note">Choose a provider.</div><div id="llmKeyState" class="muted">Loading key status…</div><div class="grid"><button onclick="saveLlmSettings()">Save model settings</button><button onclick="testLlmConnection()">Test connection</button></div><div id="llmSettingsResult" class="result-note">No changes made.</div></div></section></div></details>
+
   <div class="command-finance"><h3>Business snapshot</h3><div id="commandFinance"></div><div class="recent-work"><h3>Recent work</h3><div id="commandRecords"></div></div></div>
 </section><section class="panel page-section" id="page-finance" data-title="Finance snapshot"><h2>Finance snapshot</h2><button onclick="loadPnL()">Open period P&amp;L</button><input id="pnlStart" placeholder="Start date/time (optional)"><input id="pnlEnd" placeholder="End date/time (optional)"><input id="pnlCurrency" placeholder="Currency (optional)" maxlength="3"><pre id="finance">Loading…</pre><pre id="pnlResult"></pre></section>
 <section class="panel page-section" id="page-records" data-title="Recent work"><h2>Recent work</h2><pre id="records">Loading…</pre></section>
@@ -377,39 +403,95 @@ finance:{label:"Finance",items:[["page-finance","Finance overview"],["page-marke
 operations:{label:"Operations",items:[["page-orders","Orders & fulfilment"],["page-support","Customer support"],["page-approvals","Approvals"]]}
 };
 let activeWorkspaceGroup="overview";
+const AUREON_CHAT_STORE="aureon.chat.library.v1";
 let aureonChatHistory=[];
+let aureonChatLibrary=[];
+let activeAureonChatId=null;
+function aureonChatId(){return "chat-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,7)}
+function persistAureonChats(){
+ try{localStorage.setItem(AUREON_CHAT_STORE,JSON.stringify(aureonChatLibrary.slice(0,60)))}catch(e){const status=document.getElementById("aureonChatStatus");if(status)status.textContent="Chat storage unavailable in this browser."}
+}
+function loadAureonChats(){
+ try{const raw=JSON.parse(localStorage.getItem(AUREON_CHAT_STORE)||"[]");aureonChatLibrary=Array.isArray(raw)?raw.filter(c=>c&&typeof c.id==="string"&&Array.isArray(c.messages)).slice(0,60):[]}catch(e){aureonChatLibrary=[]}
+ if(aureonChatLibrary.length){const latest=aureonChatLibrary.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];openAureonChat(latest.id)}
+ else startAureonChat(false);
+ renderAureonChatLibrary();
+}
+function saveAureonChat(){
+ let chat=aureonChatLibrary.find(c=>c.id===activeAureonChatId);
+ if(!chat){chat={id:activeAureonChatId||aureonChatId(),title:"New conversation",updatedAt:Date.now(),messages:[]};activeAureonChatId=chat.id;aureonChatLibrary.unshift(chat)}
+ chat.messages=aureonChatHistory.slice(-80);chat.updatedAt=Date.now();
+ const first=chat.messages.find(m=>m.role==="user");
+ if(first)chat.title=first.content.slice(0,54)+(first.content.length>54?"…":"");
+ aureonChatLibrary=[chat,...aureonChatLibrary.filter(c=>c.id!==chat.id)].slice(0,60);
+ persistAureonChats();renderAureonChatLibrary();
+}
+function renderAureonChatLibrary(){
+ const box=document.getElementById("aureonChatHistoryList");if(!box)return;
+ if(!aureonChatLibrary.length){box.textContent="No saved chats yet.";return}
+ box.innerHTML="";
+ aureonChatLibrary.forEach(chat=>{
+  const button=document.createElement("button");button.type="button";button.className="chat-history-item"+(chat.id===activeAureonChatId?" active":"");
+  const title=document.createElement("span");title.textContent=chat.title||"Conversation";
+  const date=document.createElement("small");date.textContent=new Date(chat.updatedAt||Date.now()).toLocaleString();
+  button.append(title,date);button.onclick=()=>{openAureonChat(chat.id);const menu=document.querySelector(".chat-history-menu");if(menu)menu.open=false};
+  box.appendChild(button);
+ });
+}
 function addAureonBubble(role,content,meta=""){
- const box=document.getElementById("aureonChatMessages");
+ const box=document.getElementById("aureonChatMessages");if(!box)return;
  const bubble=document.createElement("div");bubble.className="chat-bubble "+role;
  const label=document.createElement("b");label.textContent=role==="user"?"You":"Aureon";bubble.appendChild(label);
  const p=document.createElement("p");p.textContent=content;bubble.appendChild(p);
  if(meta){const m=document.createElement("small");m.className="chat-meta";m.textContent=meta;bubble.appendChild(m)}
  box.appendChild(bubble);box.scrollTop=box.scrollHeight;
 }
-function clearAureonChat(){aureonChatHistory=[];const box=document.getElementById("aureonChatMessages");box.innerHTML="";addAureonBubble("assistant","New conversation. What would you like me to take care of?");document.getElementById("aureonChatStatus").textContent="Ready when you are."}
+function renderAureonConversation(){
+ const box=document.getElementById("aureonChatMessages");if(!box)return;
+ box.innerHTML="";
+ if(!aureonChatHistory.length)addAureonBubble("assistant","Hey! Tell me what you want to achieve. You can ask me to research, compare, calculate, create or prepare work.");
+ aureonChatHistory.forEach(m=>addAureonBubble(m.role,m.content,m.meta||""));
+}
+function startAureonChat(saveOld=true){
+ if(saveOld&&aureonChatHistory.length)saveAureonChat();
+ activeAureonChatId=aureonChatId();aureonChatHistory=[];
+ renderAureonConversation();renderAureonChatLibrary();
+ const status=document.getElementById("aureonChatStatus");if(status)status.textContent="New conversation · ready when you are.";
+}
+function openAureonChat(id){
+ const chat=aureonChatLibrary.find(c=>c.id===id);if(!chat)return;
+ activeAureonChatId=chat.id;aureonChatHistory=chat.messages.slice(-80);
+ renderAureonConversation();renderAureonChatLibrary();
+ const status=document.getElementById("aureonChatStatus");if(status)status.textContent="Loaded saved conversation.";
+}
+function clearAureonChat(){startAureonChat(true)}
 async function sendAureonChat(event){
  if(event)event.preventDefault();
  const input=document.getElementById("aureonChatInput"),send=document.getElementById("aureonChatSend"),status=document.getElementById("aureonChatStatus");
  const message=input.value.trim();if(!message)return;
- addAureonBubble("user",message);aureonChatHistory.push({role:"user",content:message});input.value="";send.disabled=true;status.textContent="Aureon is thinking…";
+ if(!activeAureonChatId)activeAureonChatId=aureonChatId();
+ aureonChatHistory.push({role:"user",content:message});renderAureonConversation();saveAureonChat();
+ input.value="";send.disabled=true;status.textContent="Aureon is thinking…";
  try{
   const result=await post("/api/agents/chat",{message,history:aureonChatHistory.slice(-12)});
   const meta=[result.provider,result.model].filter(Boolean).join(" · ");
-  addAureonBubble("assistant",result.reply||"Done.",meta);
-  aureonChatHistory.push({role:"assistant",content:result.reply||""});
+  aureonChatHistory.push({role:"assistant",content:result.reply||"Done.",meta}); 
   if(result.status==="queued"){
    const taskText=(result.tasks||[]).map((t,i)=>(i+1)+". "+humanLabel(t.kind)).join(" · ");
-   addAureonBubble("assistant","I've queued the local workflow. "+taskText,"Run #"+result.run_id+" · Follow progress in Worker activity");
-   status.textContent="Worker started · run #"+result.run_id;
-   refresh();
-  }else if(result.status==="needs_input"){status.textContent="Waiting for your reply."}
+   aureonChatHistory.push({role:"assistant",content:"I've queued the local workflow. "+taskText,meta:"Run #"+result.run_id+" · Follow progress in Worker activity"});
+   status.textContent="Worker started · run #"+result.run_id;refresh();
+  }else if(result.status==="needs_input")status.textContent="Waiting for your reply.";
   else status.textContent="Ready";
- }catch(error){addAureonBubble("assistant","I couldn't process that request: "+String(error),"Check your model connection in AI model connection below.");status.textContent="Request failed"}
- finally{send.disabled=false;input.focus()}
+  renderAureonConversation();saveAureonChat();
+ }catch(error){
+  aureonChatHistory.push({role:"assistant",content:"I couldn't process that request: "+String(error),meta:"Check your model connection above."});
+  renderAureonConversation();saveAureonChat();status.textContent="Request failed";
+ }finally{send.disabled=false;input.focus()}
 }
 document.addEventListener("DOMContentLoaded",()=>{
  const input=document.getElementById("aureonChatInput");
  if(input)input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendAureonChat(event)}});
+ loadAureonChats();
 });
 function showGroup(group){
  const config=WORKSPACE_GROUPS[group];if(!config)return;
