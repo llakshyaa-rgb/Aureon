@@ -207,12 +207,12 @@ def generate_mockup_preview(artwork):
     }
 
 
-def create_asset(db_path, **kwargs):
+def create_asset(db_path, idempotency_key=None, **kwargs):
     artwork = generate_vector_artwork(**kwargs)
     record = create_record(db_path, "design", artwork["title"],
                            {k: v for k, v in artwork.items() if k != "svg"} |
                            {"svg": artwork["svg"], "asset_type": "vector_artwork"},
-                           "generated")
+                           "generated", idempotency_key=idempotency_key)
     return {"record": record, "artwork": artwork}
 
 
