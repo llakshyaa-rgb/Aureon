@@ -52,6 +52,9 @@ class MissionTests(unittest.TestCase):
     def test_mission_keeps_landed_cost_and_builds_evidence_chart(self, trends, quotes, artwork, ai):
         with patch("aureon.intelligence.economics.calculate_unit_economics",
                    return_value={"currency": "INR", "selling_price": 1499, "total_cost": 770,
+                                 "fulfilment_cost": 770, "platform_fee": 0, "payment_fee": 0,
+                                 "estimated_tax": 0, "return_reserve": 0, "chargeback_reserve": 0,
+                                 "advertising_cost": 0, "other_costs": 0, "break_even_ad_cost": 729,
                                  "estimated_profit": 729, "profit_margin": 729 / 1499}):
             result = run_mission(self.db, self.payload)
         product = next(row for row in list_records(self.db, "product", 250))
