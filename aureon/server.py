@@ -157,7 +157,19 @@ def make_handler(db_path):
      job_id=int(path.split("/")[3])
      job=next((item for item in list_jobs(db_path,200) if item["id"]==job_id),None)
      if job is None or job["kind"]!="commerce.mission": return self._send(404,{"error":"mission_not_found"})
-     return self._send(200,{"job":job})
+     payload=job.get("payload",{}) if isinstance(job,dict) else {}
+     run_id=payload.get("run_id")
+     progress=None
+     if run_id is not None:
+      with connect(db_path) as conn:
+       row=conn.execute("SELECT status,title,data_json FROM workspace_records WHERE id=? AND kind='agent_run'",(run_id,)).fetchone()
+       if row:
+        run_data=json.loads(row["data_json"])
+        progress={"run_id":run_id,"status":row["status"],"title":row["title"],
+                  "progress":run_data.get("progress",[]),"current_step":run_data.get("current_step"),
+                  "completed_steps":run_data.get("completed_steps",0),"warnings":run_data.get("warnings",[]),
+                  "progress_status":run_data.get("progress_status")}
+     return self._send(200,{"job":job,"progress":progress})
     except ValueError as exc: return self._send(400,{"error":str(exc)})
    if path=="/api/command-center": return self._send(200,dashboard_snapshot(db_path))
    return self._send(404,{"error":"not_found"})
