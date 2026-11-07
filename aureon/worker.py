@@ -59,16 +59,38 @@ def process_job(job,db_path=None):
   result=run_mission(db_path,payload)
  elif kind=="agent.run":
   if db_path is None:raise ValueError("database path required")
-  plan=payload.get("plan")
-  if not isinstance(plan,dict) or not isinstance(plan.get("tasks"),list):raise ValueError("agent plan is invalid")
+  plan_payload=payload.get("plan")
+  if not isinstance(plan_payload,dict) or not isinstance(plan_payload.get("tasks"),list):raise ValueError("agent plan is invalid")
   from .agents import plan_run
-  plan=plan_run(plan.get("name"),plan["tasks"])
-  outputs=[]
+  from .db import connect,json_dump
+  import json
+  plan=plan_run(plan_payload.get("name"),plan_payload["tasks"])
+  run_id=payload.get("run_id")
+  outputs=[None]*len(plan["tasks"])
+  states=["pending"]*len(plan["tasks"])
+  warnings=[]
+  progress=[]
+  def persist(step_index,state,error=None):
+   item={"step":step_index,"kind":plan["tasks"][step_index]["kind"],"status":state}
+   if error:item["error"]=str(error)[:500]
+   progress.append(item)
+   if run_id is not None:
+    with connect(db_path) as conn:
+     row=conn.execute("SELECT data_json FROM workspace_records WHERE id=? AND kind='agent_run'",(run_id,)).fetchone()
+     if row:
+      data=json.loads(row["data_json"])
+      data["progress"]=list(progress)
+      data["current_step"]=plan["tasks"][step_index]["kind"] if state=="running" else None
+      data["completed_steps"]=sum(x in {"succeeded","failed","skipped"} for x in states)
+      data["warnings"]=list(warnings)
+      conn.execute("UPDATE workspace_records SET status=?,data_json=? WHERE id=?",
+       ("running" if state in {"running","succeeded","skipped"} else "needs_attention",json_dump(data),run_id))
   def resolve(value):
    if isinstance(value,dict) and set(value)=={"$from","path"}:
-    step=value["$from"]
-    if isinstance(step,bool) or not isinstance(step,int) or step<0 or step>=len(outputs):raise ValueError("agent output reference is unavailable")
-    current=outputs[step]
+    index=value["$from"]
+    if isinstance(index,bool) or not isinstance(index,int) or index<0 or index>=len(outputs) or states[index]!="succeeded":
+     raise ValueError("referenced dependency output is unavailable")
+    current=outputs[index]
     for part in value["path"].split("."):
      if isinstance(current,dict) and part in current:current=current[part]
      else:raise ValueError("agent output reference path does not exist: "+value["path"])
@@ -77,9 +99,36 @@ def process_job(job,db_path=None):
    if isinstance(value,list):return [resolve(v) for v in value]
    return value
   for step in plan["tasks"]:
-   if any(dep>=len(outputs) for dep in step.get("depends_on",[])):raise ValueError("agent dependency did not complete")
-   outputs.append(process_job({"kind":step["kind"],"payload":resolve(step["payload"])},db_path))
-  result={"run_name":plan.get("name"),"steps":[{"step":i,"kind":plan["tasks"][i]["kind"],"status":"succeeded","output":out} for i,out in enumerate(outputs)],"status":"succeeded"}
+   idx=step["step"]
+   if any(states[dep]!="succeeded" for dep in step.get("depends_on",[])):
+    states[idx]="skipped"
+    warnings.append("Step "+str(idx)+" skipped because a dependency failed.")
+    persist(idx,"skipped")
+    continue
+   persist(idx,"running")
+   try:
+    task_payload=resolve(step["payload"])
+    output=process_job({"kind":step["kind"],"payload":task_payload},db_path)
+    outputs[idx]=output
+    states[idx]="succeeded"
+    persist(idx,"succeeded")
+   except Exception as exc:
+    states[idx]="failed"
+    warnings.append("Step "+str(idx)+" ("+step["kind"]+"): "+str(exc)[:500])
+    persist(idx,"failed",exc)
+  results=[{"step":i,"kind":plan["tasks"][i]["kind"],"status":states[i],
+            **({"output":outputs[i]} if states[i]=="succeeded" else {})}
+           for i in range(len(states))]
+  overall="succeeded" if all(x=="succeeded" for x in states) else "completed_with_warnings" if any(x=="succeeded" for x in states) else "failed"
+  result={"run_name":plan.get("name"),"steps":results,"status":overall,"warnings":warnings}
+  if run_id is not None:
+   with connect(db_path) as conn:
+    row=conn.execute("SELECT data_json FROM workspace_records WHERE id=? AND kind='agent_run'",(run_id,)).fetchone()
+    if row:
+     data=json.loads(row["data_json"]);data["current_step"]=None;data["progress_status"]=overall;data["warnings"]=warnings
+     conn.execute("UPDATE workspace_records SET status=?,data_json=? WHERE id=?",
+      ("completed" if overall=="succeeded" else "completed_with_warnings" if overall=="completed_with_warnings" else "failed",json_dump(data),run_id))
+
  else:raise ValueError("No safe processor registered for job kind: "+kind)
  return {"mode":"local","kind":kind,"result":result}
 def run_once(db_path):
