@@ -144,7 +144,7 @@ def draft_plan(db_path, objective, context=None):
     response = generate(db_path, system, prompt, json_mode=True)
     raw = response.get("content", "").strip()
     if raw.startswith("```"):
-        raw = raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+        raw = "\n".join(raw.splitlines()[1:]).rsplit("```", 1)[0].strip()
     try:
         data = json.loads(raw)
     except (TypeError, json.JSONDecodeError):
