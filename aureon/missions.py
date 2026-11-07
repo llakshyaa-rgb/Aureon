@@ -384,6 +384,26 @@ def run_mission(db_path, payload):
             other_costs=payload["other_costs"], duty_cost=payload["duty_cost"],
             tax_rate=payload["tax_rate"], return_rate=payload["return_rate"],
             chargeback_rate=payload["chargeback_rate"], currency=payload["currency"])))
+    # A checkpoint created by an older build may not contain the current report schema.
+    # Recompute from the same local inputs rather than letting a stale checkpoint crash
+    # the mission's reporting stage.
+    required_economics = {
+        "selling_price", "fulfilment_cost", "platform_fee", "payment_fee",
+        "estimated_tax", "return_reserve", "chargeback_reserve",
+        "advertising_cost", "other_costs", "estimated_profit",
+        "profit_margin", "break_even_ad_cost",
+    }
+    if not isinstance(economics, dict) or not required_economics.issubset(economics):
+        economics = calculate_unit_economics(Offer(
+            channel="POD / dropshipping estimate",
+            selling_price=payload["selling_price"], product_cost=product_cost,
+            shipping_cost=shipping_cost, packaging_cost=payload["packaging_cost"],
+            platform_fee_rate=payload["platform_fee_rate"], payment_fee_rate=payload["payment_fee_rate"],
+            payment_fixed_fee=payload["payment_fixed_fee"], estimated_ad_cost=payload["estimated_ad_cost"],
+            other_costs=payload["other_costs"], duty_cost=payload["duty_cost"],
+            tax_rate=payload["tax_rate"], return_rate=payload["return_rate"],
+            chargeback_rate=payload["chargeback_rate"], currency=payload["currency"]))
+        warnings.append("An older economics checkpoint was refreshed using the current local calculator.")
     research_context = {
         "market_signals": trends, "keyword_news_research": news_research,
         "public_competitor_observations": competitor_research,
