@@ -63,6 +63,13 @@ def submit_mission(db_path, body):
         keywords = [x.strip() for x in keywords.split(",") if x.strip()]
     if not isinstance(keywords, list) or not 1 <= len(keywords) <= 12 or any(not isinstance(x, str) or not x.strip() or len(x) > 80 for x in keywords):
         raise ValueError("keywords must contain 1-12 non-empty terms")
+    competitor_urls = body.get("competitor_urls", [])
+    if isinstance(competitor_urls, str):
+        competitor_urls = [x.strip() for x in competitor_urls.splitlines() if x.strip()]
+    if not isinstance(competitor_urls, list) or len(competitor_urls) > 5 or any(
+        not isinstance(x, str) or not x.strip() or len(x.strip()) > 2048 for x in competitor_urls
+    ):
+        raise ValueError("competitor_urls must contain at most five public product URLs")
     payload = {
         "product_title": title, "concept": concept, "audience": audience,
         "product_type": product_type, "destination": destination,
@@ -72,7 +79,9 @@ def submit_mission(db_path, body):
         "payment_fixed_fee": payment_fixed_fee, "estimated_ad_cost": estimated_ad_cost,
         "packaging_cost": packaging_cost, "duty_cost": duty_cost, "other_costs": other_costs,
         "tax_rate": tax_rate, "return_rate": return_rate, "chargeback_rate": chargeback_rate,
-        "keywords": [x.strip() for x in keywords], "style": body.get("style", "orbit"),
+        "keywords": [x.strip() for x in keywords],
+        "competitor_urls": [x.strip() for x in competitor_urls],
+        "style": body.get("style", "orbit"),
         "palette": body.get("palette", "midnight"),
     }
     if payload["style"] not in {"orbit", "badge", "type", "botanical", "geometric"}:
@@ -260,6 +269,7 @@ def run_mission(db_path, payload):
         **payload,
     }
     from .trends import collect_trends, collect_keyword_research
+    from .public_pages import research_competitor_urls
     from .suppliers import compare_supplier_quotes
     from .intelligence.economics import Offer, calculate_unit_economics
     from .creative import create_asset
@@ -336,6 +346,12 @@ def run_mission(db_path, payload):
         warnings.append("Some keyword news searches could not be collected; inspect the research errors.")
     if news_research and not news_research.get("fetched"):
         warnings.append("No keyword news sources were returned; market coverage remains incomplete.")
+    competitor_research = step("Public competitor listing observations",
+        lambda: research_competitor_urls(db_path, payload.get("competitor_urls", [])))
+    if competitor_research and competitor_research.get("errors"):
+        warnings.append("Some competitor product pages could not be read; inspect the per-URL errors.")
+    if competitor_research and competitor_research.get("requested") and not competitor_research.get("observed"):
+        warnings.append("No competitor product-page observations were collected.")
     comparison = step("Supplier quote comparison",
                       lambda: compare_supplier_quotes(db_path, payload["product_type"],
                                                       payload["destination"], payload["currency"]))
@@ -369,13 +385,14 @@ def run_mission(db_path, payload):
             tax_rate=payload["tax_rate"], return_rate=payload["return_rate"],
             chargeback_rate=payload["chargeback_rate"], currency=payload["currency"])))
     research_context = {
-        "market_signals": trends, "keyword_news_research": news_research, "supplier_comparison": comparison,
-        "selected_supplier_quote": best, "unit_economics": economics,
-        "cost_assumptions": cost_source,
-        "competition_assessment": {
+        "market_signals": trends, "keyword_news_research": news_research,
+        "public_competitor_observations": competitor_research,
+        "supplier_comparison": comparison, "selected_supplier_quote": best,
+        "unit_economics": economics, "cost_assumptions": cost_source,
+        "competition_assessment": (competitor_research or {}).get("price_benchmarks", {
             "status": "not_assessed",
-            "reason": "No verified competitor price observations or marketplace crawl were supplied. News and trend results are not substitutes for competitor pricing.",
-        },
+            "reason": "No competitor URLs were supplied or no usable price observations were collected. News and trend results are not substitutes for competitor pricing.",
+        }),
         "market_signal_limitations": "Trend attention and news coverage are discovery signals, not purchase intent or demand proof.",
         "supplier_limitations": "Quotes are operator-entered; freshness is not independent verification.",
     }
@@ -458,12 +475,15 @@ def run_mission(db_path, payload):
         analysis["metrics"] = {}
         analysis["data_visuals"] = []
     analysis["financial_breakdown"] = economics or {}
-    analysis["competition_assessment"] = {
+    analysis["competition_assessment"] = (competitor_research or {}).get("price_benchmarks", {
         "status": "not_assessed",
-        "reason": "Aureon has not collected verified competitor price observations for this mission. No competition score is inferred from news or trends.",
-    }
-    if "Verified competitor pricing and offer comparison" not in analysis.get("missing_evidence", []):
-        analysis.setdefault("missing_evidence", []).append("Verified competitor pricing and offer comparison")
+        "reason": "No usable public competitor price observations were collected. No competition score is inferred from news or trends.",
+    })
+    if not (competitor_research or {}).get("observed"):
+        if "Public competitor listing observations" not in analysis.get("missing_evidence", []):
+            analysis.setdefault("missing_evidence", []).append("Public competitor listing observations")
+    elif len((competitor_research or {}).get("observed", [])) < 3:
+        analysis.setdefault("missing_evidence", []).append("Broader competitor coverage (at least three comparable listings)")
     if "Independent product-demand and purchase-intent evidence" not in analysis.get("missing_evidence", []):
         analysis.setdefault("missing_evidence", []).append("Independent product-demand and purchase-intent evidence")
     if ai_assets:
@@ -484,6 +504,7 @@ def run_mission(db_path, payload):
         "outputs": {
             "trend_collection": trends,
             "keyword_news_research": news_research,
+            "competitor_research": competitor_research,
             "supplier_comparison": comparison,
             "economics": economics,
             "product": product,
