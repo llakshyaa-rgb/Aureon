@@ -51,8 +51,8 @@ python -m aureon.cli restore data/backups/aureon-YYYYMMDD-HHMMSS-ffffff.sqlite3
 
 ## Live integrations
 
-### Optional AI analyst
-Set `AUREON_AI_BASE_URL` to an HTTPS OpenAI-compatible chat-completions base URL, `AUREON_AI_API_KEY` to the provider key and `AUREON_AI_MODEL` to a supported model. The model receives only the mission context and returns an advisory JSON analysis; it is not treated as a source of verified market facts. Without all three settings, the local mission still runs but the AI analyst step is marked not configured. Keep credentials only in the local `.env` file.
+### Configure an LLM in the dashboard
+Open **Automation & System → AI model settings**. Choose a provider preset (OpenAI, Anthropic, Gemini, OpenRouter, Groq, Together AI, DeepSeek, Mistral, Cerebras, xAI, Fireworks, Perplexity or local Ollama), enter the exact model ID from that provider, add your API key, save, then test the connection. You can also choose **Custom OpenAI-compatible endpoint** for compatible gateways, inference hosts and self-hosted servers. Anthropic and Gemini use their native request formats; OpenAI-compatible services use the chat-completions protocol. The provider determines which model IDs and features are available. Keys are stored in a local `llm_settings.json` file beside the database with owner-only permissions where supported; the settings API never returns the key. Keep the database directory private and do not expose Aureon beyond localhost.\n\nWhen a model is configured, commerce missions use it to generate listing copy, launch copy, tags and an evidence-bound research analysis. If it is unavailable or returns invalid structured output, the mission reports the problem and falls back to local draft generation. AI output remains a draft and is not verified market evidence.
 
 ### Google Trends
 Public Trending RSS by country code. Fetch trends in the dashboard, or save unique signals as research-stage opportunity records. Trend attention is not proof of product demand or sales.
