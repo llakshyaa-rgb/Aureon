@@ -50,8 +50,11 @@ def plan_run(name, tasks):
         if not isinstance(task, dict) or task.get("kind") not in ALLOWED or not isinstance(task.get("payload"), dict):
             raise ValueError("unsupported task or payload")
         missing = ALLOWED[task["kind"]] - set(task["payload"])
+        extra = set(task["payload"]) - ALLOWED[task["kind"]]
         if missing:
             raise ValueError("task " + str(i) + " missing " + ", ".join(sorted(missing)))
+        if extra:
+            raise ValueError("task " + str(i) + " has unsupported fields: " + ", ".join(sorted(extra)))
         deps = task.get("depends_on", [])
         if not isinstance(deps, list) or any(
             isinstance(dep, bool) or not isinstance(dep, int) or dep < 0 or dep >= i for dep in deps
@@ -114,3 +117,42 @@ def runtime_status(db_path):
                          "completed_steps": data.get("completed_steps", 0), "warnings": data.get("warnings", [])})
     return {"jobs": jobs, "recent_runs": runs, "execution": "dependency-aware local worker",
             "shell_execution": False, "external_side_effects": False}
+
+
+def draft_plan(db_path, objective, context=None):
+    """Ask the configured LLM for a safe local task graph; validate every task before returning it."""
+    if not isinstance(objective, str) or not objective.strip() or len(objective) > 1200:
+        raise ValueError("objective must be 1-1200 characters")
+    if context is None:
+        context = {}
+    if not isinstance(context, dict):
+        raise ValueError("context must be an object")
+    if len(json.dumps(context, ensure_ascii=False)) > 12000:
+        raise ValueError("planning context is too large")
+    from .llm import generate
+    system = (
+        "You are Aureon's local workflow planner. Return only JSON with keys name, tasks, rationale. "
+        "tasks is an array of 1-12 objects with kind, payload, and optional depends_on indexes. "
+        "Only choose these safe local task kinds and exact payload fields: " +
+        json.dumps({k: sorted(v) for k, v in ALLOWED.items()}) +
+        ". Never add shell, network publishing, ad spend, payments, supplier ordering, customer messaging, "
+        "deletion, or account changes. Do not fabricate observations or evidence. If inputs are missing, "
+        "choose only tasks that can run with supplied context; otherwise explain gaps in rationale. "
+        "Use earlier task indexes for dependencies. Never reference unavailable outputs."
+    )
+    prompt = "OBJECTIVE:\\n" + objective.strip() + "\\nCONTEXT:\\n" + json.dumps(context, ensure_ascii=False)[:12000]
+    response = generate(db_path, system, prompt, json_mode=True)
+    raw = response.get("content", "").strip()
+    if raw.startswith("```"):
+        raw = raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+    try:
+        data = json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        raise RuntimeError("The selected model did not return a valid workflow plan. Try another model or shorten the objective.") from None
+    if not isinstance(data, dict) or not isinstance(data.get("tasks"), list):
+        raise RuntimeError("The selected model returned an invalid workflow plan.")
+    plan = plan_run(data.get("name") or objective.strip()[:120], data["tasks"])
+    return {"plan": plan, "rationale": data.get("rationale", ""),
+            "provider": response.get("provider"), "model": response.get("model"),
+            "requires_operator_review": True,
+            "safety": "Only allowlisted local tasks are executable; external side effects remain approval-gated."}
