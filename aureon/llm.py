@@ -71,18 +71,23 @@ def save_settings(db_path, body):
     info = PROVIDERS[provider]
     base_url = str(body.get("base_url") or info["base_url"]).strip().rstrip("/")
     model = str(body.get("model") or "").strip()
+    previous = load_settings(db_path)
     key = body.get("api_key")
     if key is None or key == "":
-        key = load_settings(db_path).get("api_key", "")
+        key = previous.get("api_key", "") if previous.get("provider") == provider else ""
     if not isinstance(key, str) or len(key) > 4096:
         raise ValueError("API key must be text shorter than 4096 characters.")
     if not model or len(model) > 240:
         raise ValueError("Enter the exact model ID supplied by your provider.")
     if not base_url or len(base_url) > 500:
         raise ValueError("Base URL is required.")
-    if provider == "ollama":
+    local_providers = {"ollama", "lm_studio"}
+    if provider in local_providers:
         if not (base_url.startswith("http://127.0.0.1") or base_url.startswith("http://localhost")):
-            raise ValueError("Ollama must use a local loopback URL.")
+            raise ValueError("Local model providers must use a loopback URL.")
+    elif provider == "custom" and base_url.startswith("http://"):
+        if not (base_url.startswith("http://127.0.0.1") or base_url.startswith("http://localhost")):
+            raise ValueError("Custom HTTP endpoints are allowed only on localhost; cloud endpoints must use HTTPS.")
     elif not base_url.startswith("https://"):
         raise ValueError("Cloud provider endpoints must use HTTPS.")
     try:
@@ -92,7 +97,7 @@ def save_settings(db_path, body):
         raise ValueError("Temperature and maximum tokens must be numeric.") from None
     if not 0 <= temperature <= 2 or not 128 <= max_tokens <= 8192:
         raise ValueError("Temperature must be 0–2 and max tokens 128–8192.")
-    if provider != "ollama" and not key:
+    if provider not in {"ollama", "lm_studio"} and not key:
         raise ValueError("An API key is required for this provider.")
     data = {"provider": provider, "base_url": base_url, "model": model,
             "api_key": key, "temperature": temperature, "max_tokens": max_tokens}
@@ -167,7 +172,7 @@ def generate(db_path, system, prompt, json_mode=False):
         }, {})
         content = "".join(p.get("text", "") for p in result.get("candidates", [{}])[0].get("content", {}).get("parts", []))
     else:
-        if provider != "ollama" and not key:
+        if provider not in {"ollama", "lm_studio"} and not key:
             raise RuntimeError("Provider API key is missing.")
         payload = {"model": model, "temperature": data.get("temperature", 0.2),
                    "max_tokens": data.get("max_tokens", 1800),
