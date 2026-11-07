@@ -183,6 +183,21 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
  .topbar{align-items:flex-start;flex-wrap:wrap}
 }
 
+
+/* Ensure secondary widgets and inline cards follow the same dark palette. */
+.ai-bullet,.ai-kpi,.ai-chart,.data-value-bool,.data-value-bool.yes,.data-value-bool.no,
+.finance-breakdown,.finance-footnote,.runtime-steps,.runtime-state,.status-pill,
+.data-table tr:hover td,.data-table th,.data-table td,.result-warning{
+ background-color:#203650!important;color:#DCEBFA!important;border-color:rgba(151,180,216,.2)!important
+}
+.ai-bullet:before,.ai-bar-fill{background:#438BFA!important}
+.ai-bar-track{background:#0E1A2A!important}
+.ai-confidence,.pill{background:rgba(67,139,250,.18)!important;color:#A9CEFF!important}
+.status-succeeded,.status-approved,.status-completed,.status-resolved,.runtime-state.succeeded{background:#173D37!important;color:#8BE0BC!important}
+.status-failed,.status-rejected,.status-cancelled,.runtime-state.failed{background:#492B36!important;color:#FFB2BC!important}
+.status-running,.status-in_transit,.status-processing,.runtime-state.running{background:#1E3C68!important;color:#A9CEFF!important}
+.status-pending,.status-queued,.status-draft{background:#4A3A25!important;color:#F5D59B!important}
+.overview-tool-panel .result-note{background:#203650!important;color:#DCEBFA!important}
 /* Final mobile-first dark workspace overrides: no pale cards or clipped navigation. */
 :root{color-scheme:dark!important;--ink:#E7F0FC;--paper:#0B1421;--blue:#438BFA;--line:rgba(151,180,216,.19);--muted:#A0B2C9;--white:#EAF2FC;--accent-soft:rgba(67,139,250,.16);--surface:#192A40;--surface-alt:#20344D}
 html,body{background:#0B1421!important;color:#E7F0FC!important}
