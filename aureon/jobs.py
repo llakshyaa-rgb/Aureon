@@ -69,14 +69,45 @@ def recover_interrupted(path: Path):
     recovered = {"requeued": 0, "failed": 0}
     with connect(path) as conn:
         conn.execute("BEGIN IMMEDIATE")
-        rows = conn.execute("SELECT id,kind,attempts,max_attempts FROM jobs WHERE status='running'").fetchall()
+        rows = conn.execute("SELECT id,kind,attempts,max_attempts,payload_json FROM jobs WHERE status='running'").fetchall()
         for row in rows:
-            # Agent plans are never replayed: partial task outputs may already exist.
-            # Other durable jobs retry within their explicit attempt budget.
-            resumable = row["kind"] != "agent.run"
-            status = "queued" if resumable and row["attempts"] < row["max_attempts"] else "failed"
+            # An agent plan may resume only when it has a durable run record with
+            # step-level checkpoints. Raw/untracked agent jobs are never replayed.
+            checkpointed_agent = False
             if row["kind"] == "agent.run":
-                message = "Agent plan stopped after interruption and was not replayed; inspect partial outputs before starting a new run."
+                try:
+                    payload = json.loads(row["payload_json"])
+                    run_id = payload.get("run_id")
+                    if run_id is not None:
+                        saved = conn.execute(
+                            "SELECT data_json FROM workspace_records WHERE id=? AND kind='agent_run'",
+                            (run_id,),
+                        ).fetchone()
+                        if saved:
+                            run_data = json.loads(saved["data_json"])
+                            states = run_data.get("step_states")
+                            outputs = run_data.get("step_outputs")
+                            tasks = run_data.get("tasks")
+                            checkpointed_agent = (
+                                isinstance(states, list) and isinstance(outputs, list)
+                                and isinstance(tasks, list) and len(states) == len(tasks)
+                                and len(outputs) == len(tasks)
+                                and any(state in {"succeeded", "failed", "skipped", "running"} for state in states)
+                            )
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    checkpointed_agent = False
+            # A checkpointed agent continuation is not a fresh replay: the worker
+            # restores completed outputs and skips completed steps. It may therefore
+            # be requeued once even though agent jobs have max_attempts=1.
+            resumable = row["kind"] != "agent.run" or checkpointed_agent
+            status = "queued" if resumable and (
+                row["kind"] == "agent.run" or row["attempts"] < row["max_attempts"]
+            ) else "failed"
+            if row["kind"] == "agent.run" and not checkpointed_agent:
+                message = "Agent plan had no durable step checkpoint and was not replayed; inspect it before starting a new run."
+            elif row["kind"] == "agent.run":
+                message = "Recovered from durable step checkpoints; completed steps and outputs will be preserved."
+
             elif row["kind"] == "commerce.mission":
                 message = "Recovered for safe step-level continuation; completed mission outputs are checkpointed."
             elif status == "queued":
