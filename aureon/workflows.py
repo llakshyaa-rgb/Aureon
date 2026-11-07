@@ -35,7 +35,7 @@ def initialize_workspace(path):
   conn.executescript(SCHEMA)
   conn.execute("UPDATE approvals SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+24 hours') WHERE status='pending' AND expires_at IS NULL")
 def _record(row):
- item=dict(row);item["data"]=json.loads(item.pop("data_json"));return item
+ item=dict(row);item["data"]=json.loads(item.pop("data_json"));item["data"].pop("_aureon_idempotency_key",None);return item
 def create_record(path,kind,title,data=None,status=None,idempotency_key=None):
  if kind not in KINDS: raise ValueError("unsupported record type")
  if not isinstance(title,str) or not title.strip() or len(title)>200: raise ValueError("title must be 1-200 characters")
@@ -46,7 +46,7 @@ def create_record(path,kind,title,data=None,status=None,idempotency_key=None):
  if idempotency_key is not None:
   if not isinstance(idempotency_key,str) or not idempotency_key.strip() or len(idempotency_key)>200:
    raise ValueError("idempotency_key must be 1-200 characters")
-  payload["_idempotency_key"]=idempotency_key.strip()
+  payload["_aureon_idempotency_key"]=idempotency_key.strip()
  if kind=="opportunity":
   evidence=payload.get("evidence",[])
   if not isinstance(evidence,list) or not evidence: raise ValueError("opportunity requires evidence")
@@ -62,7 +62,7 @@ def create_record(path,kind,title,data=None,status=None,idempotency_key=None):
    for existing in rows:
     try: existing_data=json.loads(existing["data_json"])
     except (TypeError,ValueError): continue
-    if existing_data.get("_idempotency_key")==idempotency_key.strip():
+    if existing_data.get("_aureon_idempotency_key")==idempotency_key.strip():
      return _record(conn.execute("SELECT * FROM workspace_records WHERE id=?",(existing["id"],)).fetchone())
   cur=conn.execute("INSERT INTO workspace_records(kind,status,title,data_json) VALUES(?,?,?,?)",(kind,status,title.strip(),json_dump(payload)))
   row=conn.execute("SELECT * FROM workspace_records WHERE id=?",(cur.lastrowid,)).fetchone()
