@@ -191,6 +191,10 @@ def chat_command(db_path, message, history=None):
         "Only use dependencies on earlier task indexes. Never claim a task ran unless it is in the supplied results. "
         "Keep the reply concise and friendly."
     )
+    # The browser sends the just-submitted user message in history as well.
+    # Remove that duplicate so the model sees it exactly once.
+    if clean_history and clean_history[-1]["role"] == "user" and clean_history[-1]["content"].strip() == message.strip():
+        clean_history.pop()
     prompt = "RECENT CONVERSATION:\n" + json.dumps(clean_history, ensure_ascii=False)[:10000]
     prompt += "\nCURRENT USER MESSAGE:\n" + message.strip()
     response = generate(db_path, system, prompt, json_mode=True)
@@ -207,8 +211,16 @@ def chat_command(db_path, message, history=None):
             data = None
     if not isinstance(data, dict) or not isinstance(data.get("tasks", []), list):
         raise RuntimeError("The selected model did not return a usable chat response. Try again or change model.")
-    reply = data.get("reply", "")
-    needs_input = data.get("needs_input", "")
+    if "reply" not in data or not isinstance(data.get("reply"), str):
+        raise RuntimeError("The selected model returned an incomplete chat response. Try another model.")
+    if "needs_input" in data and not isinstance(data.get("needs_input"), str):
+        raise RuntimeError("The selected model returned an invalid follow-up question. Try another model.")
+    reply = data.get("reply", "").strip()
+    needs_input = data.get("needs_input", "").strip()
+    # Reject the kind of one-word/echo response that previously made the
+    # operator appear to accept a command without understanding it.
+    if not data.get("tasks") and not needs_input and len(message.strip()) >= 80 and len(reply) < 20:
+        raise RuntimeError("The selected model returned an incomplete answer. Try another model or switch providers.")
     if not isinstance(reply, str):
         reply = ""
     if not isinstance(needs_input, str):
