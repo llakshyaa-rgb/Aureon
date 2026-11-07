@@ -240,18 +240,46 @@ def run_mission(db_path, payload):
 
     steps = []
     warnings = []
+    run_id = payload.get("run_id")
+    def persist_progress(name, status, error=None):
+        if run_id is None:
+            return
+        from datetime import datetime, timezone
+        stamp = datetime.now(timezone.utc).isoformat()
+        with connect(db_path) as conn:
+            row = conn.execute("SELECT data_json FROM workspace_records WHERE id=? AND kind='agent_run'",
+                               (run_id,)).fetchone()
+            if row:
+                run_data = json.loads(row["data_json"])
+                progress = run_data.setdefault("progress", [])
+                progress.append({"name": name, "status": status, "at": stamp,
+                                 **({"error": str(error)[:500]} if error else {})})
+                run_data["current_step"] = name
+                run_data["completed_steps"] = len(progress)
+                conn.execute("UPDATE workspace_records SET status=?,data_json=? WHERE id=?",
+                             ("running" if status in {"running", "succeeded", "not_configured"} else "needs_attention",
+                              json_dump(run_data), run_id))
+            conn.execute(
+                "INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
+                ("agent.mission.step", "agent_run", str(run_id),
+                 json_dump({"step": name, "status": status, "at": stamp,
+                            **({"error": str(error)[:500]} if error else {})})))
     def step(name, fn):
+        persist_progress(name, "running")
         try:
             value = fn()
             if isinstance(value, dict) and value.get("status") == "not_configured":
                 steps.append({"name": name, "status": "not_configured", "output": value})
                 warnings.append(name + ": AI provider is not configured.")
+                persist_progress(name, "not_configured")
             else:
                 steps.append({"name": name, "status": "succeeded", "output": value})
+                persist_progress(name, "succeeded")
             return value
         except Exception as exc:
             steps.append({"name": name, "status": "needs_attention", "error": str(exc)})
             warnings.append(name + ": " + str(exc))
+            persist_progress(name, "needs_attention", exc)
             return None
 
     trends = step("Live market attention signals",
@@ -415,9 +443,20 @@ def run_mission(db_path, payload):
         "external_actions_taken": False,
     }
     with connect(db_path) as conn:
+        if run_id is not None:
+            row = conn.execute("SELECT data_json FROM workspace_records WHERE id=? AND kind='agent_run'",
+                               (run_id,)).fetchone()
+            if row:
+                run_data = json.loads(row["data_json"])
+                run_data["current_step"] = None
+                run_data["progress_status"] = result["status"]
+                run_data["warnings"] = warnings
+                conn.execute("UPDATE workspace_records SET status=?,data_json=? WHERE id=?",
+                             ("completed" if result["status"] == "completed" else "completed_with_warnings",
+                              json_dump(run_data), run_id))
         conn.execute(
             "INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
-            ("agent.mission.completed", "agent_run", str(payload.get("run_id", "unknown")),
+            ("agent.mission.completed", "agent_run", str(run_id or "unknown"),
              json_dump({"status": result["status"], "warnings": warnings,
                         "output_record_ids": [x for x in [
                             product.get("id") if product else None,
