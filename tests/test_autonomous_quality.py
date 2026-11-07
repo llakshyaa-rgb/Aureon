@@ -62,7 +62,7 @@ class AgentExecutionRecoveryTests(unittest.TestCase):
 
     def test_adaptive_plan_uses_model_and_validates_allowlisted_tasks(self):
         response = {"provider": "test-provider", "model": "test-model",
-                    "content": ' ```json\\n{"name":"Design workflow","tasks":[{"kind":"design.brief","payload":{"niche":"space","audience":"students","product_type":"tee","style":"minimal","concept":"planets"}}],"rationale":"Create a first design brief."}\\n``` '}
+                    "content": ' ```json\n{"name":"Design workflow","tasks":[{"kind":"design.brief","payload":{"niche":"space","audience":"students","product_type":"tee","style":"minimal","concept":"planets"}}],"rationale":"Create a first design brief."}\n``` '}
         with patch("aureon.llm.generate", return_value=response):
             result = draft_plan(self.db, "Create a space-themed shirt design", {"audience": "students"})
         self.assertEqual(result["provider"], "test-provider")
