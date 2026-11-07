@@ -310,10 +310,10 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
 <div class="brand"><div class="brand-mark">A</div><div><strong>AUREON</strong><small>Commerce workspace</small></div></div>
 <div><div class="nav-label">Workspace</div><nav class="nav-list" aria-label="Main sections">
 <button class="nav-item active" data-group="overview" onclick="showGroup('overview')"><span class="nav-dot"></span>Overview</button>
-<button class="nav-item" data-group="products" onclick="showGroup('products')"><span class="nav-dot"></span>Products &amp; Research</button>
-<button class="nav-item" data-group="finance" onclick="showGroup('finance')"><span class="nav-dot"></span>Finance &amp; Growth</button>
+<button class="nav-item" data-group="products" onclick="showGroup('products')"><span class="nav-dot"></span>Products</button>
+<button class="nav-item" data-group="finance" onclick="showGroup('finance')"><span class="nav-dot"></span>Finance</button>
 <button class="nav-item" data-group="operations" onclick="showGroup('operations')"><span class="nav-dot"></span>Operations</button>
-<button class="nav-item" data-group="automation" onclick="showGroup('automation')"><span class="nav-dot"></span>Automation &amp; System</button>
+ 
 </nav></div>
 <div class="sidebar-foot">LOCAL WORKSPACE<br>Private · localhost only<br><span id="versionLabel">v0.1.0</span></div>
 </aside><main class="main"><header class="topbar"><div><div class="eyebrow">Operations / Workspace</div><h1 id="pageTitle">Workspace overview</h1></div><div class="top-meta"><span class="live-dot"></span> Local system <span>·</span> v0.1.0</div></header><nav id="sectionTabs" class="section-tabs" aria-label="Workspace tools"></nav><section class="panel page-section" id="page-opportunities" data-title="Live opportunity discovery"><h2>Live opportunity discovery</h2><p class="muted">Current public Google Trends searches. Attention signals only; not validated demand or sales.</p><div class="grid"><input id="geo" value="IN" maxlength="2"><button onclick="loadTrends()">Fetch live trends</button><button onclick="collectTrends()">Save snapshot &amp; opportunities</button><button onclick="trendHistory()">View rank history</button></div><pre id="trends">Not fetched yet.</pre></section>
@@ -417,13 +417,46 @@ function renderData(value){
  return scalar(value);
 }
 const WORKSPACE_GROUPS={
-overview:{label:"Overview",items:[["page-overview","Workspace overview"],["page-agent-runtime","Runtime status"],["page-opportunities","Opportunity discovery"],["page-records","Recent work"]]},
-products:{label:"Products & Research",items:[["page-product-management","Product management"],["page-products","Create product"],["page-suppliers","Supplier management"],["page-printify","Printify catalog"],["page-shopify","Shopify connection"],["page-creative","Creative studio"]]},
-finance:{label:"Finance & Growth",items:[["page-finance","Finance snapshot"],["page-finance-entry","Record transaction"],["page-marketing","Marketing experiments"],["page-campaigns","Campaigns"]]},
-operations:{label:"Operations",items:[["page-orders","Order operations"],["page-support","Support queue"],["page-approvals","Approvals"]]},
-automation:{label:"Automation & System",items:[["page-jobs","Job queue"]]}
+overview:{label:"Overview",items:[["page-overview","Command centre"],["page-agent-runtime","Worker activity"]]},
+products:{label:"Products",items:[["page-product-management","Product workspace"],["page-opportunities","Market research"],["page-suppliers","Suppliers & quotes"]]},
+finance:{label:"Finance",items:[["page-finance","Finance overview"],["page-marketing","Growth & campaigns"]]},
+operations:{label:"Operations",items:[["page-orders","Orders & fulfilment"],["page-support","Customer support"],["page-approvals","Approvals"]]}
 };
 let activeWorkspaceGroup="overview";
+let aureonChatHistory=[];
+function addAureonBubble(role,content,meta=""){
+ const box=document.getElementById("aureonChatMessages");
+ const bubble=document.createElement("div");bubble.className="chat-bubble "+role;
+ const label=document.createElement("b");label.textContent=role==="user"?"You":"Aureon";bubble.appendChild(label);
+ const p=document.createElement("p");p.textContent=content;bubble.appendChild(p);
+ if(meta){const m=document.createElement("small");m.className="chat-meta";m.textContent=meta;bubble.appendChild(m)}
+ box.appendChild(bubble);box.scrollTop=box.scrollHeight;
+}
+function clearAureonChat(){aureonChatHistory=[];const box=document.getElementById("aureonChatMessages");box.innerHTML="";addAureonBubble("assistant","New conversation. What would you like me to take care of?");document.getElementById("aureonChatStatus").textContent="Ready when you are."}
+async function sendAureonChat(event){
+ if(event)event.preventDefault();
+ const input=document.getElementById("aureonChatInput"),send=document.getElementById("aureonChatSend"),status=document.getElementById("aureonChatStatus");
+ const message=input.value.trim();if(!message)return;
+ addAureonBubble("user",message);aureonChatHistory.push({role:"user",content:message});input.value="";send.disabled=true;status.textContent="Aureon is thinking…";
+ try{
+  const result=await post("/api/agents/chat",{message,history:aureonChatHistory.slice(-12)});
+  const meta=[result.provider,result.model].filter(Boolean).join(" · ");
+  addAureonBubble("assistant",result.reply||"Done.",meta);
+  aureonChatHistory.push({role:"assistant",content:result.reply||""});
+  if(result.status==="queued"){
+   const taskText=(result.tasks||[]).map((t,i)=>(i+1)+". "+humanLabel(t.kind)).join(" · ");
+   addAureonBubble("assistant","I've queued the local workflow. "+taskText,"Run #"+result.run_id+" · Follow progress in Worker activity");
+   status.textContent="Worker started · run #"+result.run_id;
+   refresh();
+  }else if(result.status==="needs_input"){status.textContent="Waiting for your reply."}
+  else status.textContent="Ready";
+ }catch(error){addAureonBubble("assistant","I couldn't process that request: "+String(error),"Check your model connection in AI model connection below.");status.textContent="Request failed"}
+ finally{send.disabled=false;input.focus()}
+}
+document.addEventListener("DOMContentLoaded",()=>{
+ const input=document.getElementById("aureonChatInput");
+ if(input)input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendAureonChat(event)}});
+});
 function showGroup(group){
  const config=WORKSPACE_GROUPS[group];if(!config)return;
  activeWorkspaceGroup=group;
