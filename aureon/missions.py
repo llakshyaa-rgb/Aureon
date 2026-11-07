@@ -231,7 +231,7 @@ def run_mission(db_path, payload):
         "other_costs": 0, "tax_rate": 0, "return_rate": 0, "chargeback_rate": 0,
         **payload,
     }
-    from .trends import collect_trends
+    from .trends import collect_trends, collect_keyword_research
     from .suppliers import compare_supplier_quotes
     from .intelligence.economics import Offer, calculate_unit_economics
     from .creative import create_asset
@@ -301,6 +301,9 @@ def run_mission(db_path, payload):
 
     trends = step("Live market attention signals",
                   lambda: collect_trends(db_path, payload["geo"], 25))
+    news_research = step("Keyword news research with source links",
+                         lambda: collect_keyword_research(db_path, payload["keywords"],
+                                                          payload["geo"], 20))
     comparison = step("Supplier quote comparison",
                       lambda: compare_supplier_quotes(db_path, payload["product_type"],
                                                       payload["destination"], payload["currency"]))
@@ -334,7 +337,7 @@ def run_mission(db_path, payload):
             tax_rate=payload["tax_rate"], return_rate=payload["return_rate"],
             chargeback_rate=payload["chargeback_rate"], currency=payload["currency"])))
     research_context = {
-        "market_signals": trends, "supplier_comparison": comparison,
+        "market_signals": trends, "keyword_news_research": news_research, "supplier_comparison": comparison,
         "selected_supplier_quote": best, "unit_economics": economics,
         "cost_assumptions": cost_source,
         "market_signal_limitations": "Trend attention is not purchase intent or demand proof.",
