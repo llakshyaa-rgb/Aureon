@@ -210,6 +210,7 @@ def collect_trends(db_path, geo="IN", limit=25):
         known.add(key)
     return {"provider": result["provider"], "geo": result["geo"],
             "fetched_at": result["fetched_at"], "fetched": result["count"],
+            "items": result["items"],
             "created": len(created), "record_ids": created,
             "note": "Trend signals are not verified demand or sales."}
 
