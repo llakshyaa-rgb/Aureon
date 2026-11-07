@@ -19,6 +19,13 @@ ALLOWED = {
  "supplier.order.prepare": {"product_title","quantity","product_type","destination","currency"},
  "campaign.metrics": {"metrics"},
  "trends.collect": {"geo"},
+ "commerce.mission": {"product_title","concept","audience","product_type","destination","selling_price","product_cost","keywords","style","palette"},
+}
+
+OPTIONAL = {
+ "commerce.mission": {"currency","geo","shipping_cost","platform_fee_rate","payment_fee_rate",
+  "payment_fixed_fee","estimated_ad_cost","packaging_cost","duty_cost","other_costs",
+  "tax_rate","return_rate","chargeback_rate","competitor_urls"},
 }
 REFERENCE = {"$from", "path"}
 
@@ -50,7 +57,7 @@ def plan_run(name, tasks):
         if not isinstance(task, dict) or task.get("kind") not in ALLOWED or not isinstance(task.get("payload"), dict):
             raise ValueError("unsupported task or payload")
         missing = ALLOWED[task["kind"]] - set(task["payload"])
-        extra = set(task["payload"]) - ALLOWED[task["kind"]]
+        extra = set(task["payload"]) - ALLOWED[task["kind"]] - OPTIONAL.get(task["kind"], set())
         if missing:
             raise ValueError("task " + str(i) + " missing " + ", ".join(sorted(missing)))
         if extra:
@@ -136,7 +143,8 @@ def draft_plan(db_path, objective, context=None):
         "tasks is an array of 1-12 objects with kind, payload, and optional depends_on indexes. "
         "Only choose these safe local task kinds and exact payload fields: " +
         json.dumps({k: sorted(v) for k, v in ALLOWED.items()}) +
-        ". Never add shell, network publishing, ad spend, payments, supplier ordering, customer messaging, "
+        ". A commerce.mission task executes Aureon's complete local product workflow and must include every required payload field. "
+        + "Never add shell, network publishing, ad spend, payments, supplier ordering, customer messaging, "
         "deletion, or account changes. Do not fabricate observations or evidence. If inputs are missing, "
         "choose only tasks that can run with supplied context; otherwise explain gaps in rationale. "
         "Use earlier task indexes for dependencies. Never reference unavailable outputs."
@@ -183,7 +191,9 @@ def chat_command(db_path, message, history=None):
         "For a clear request to do work, create a short dependency-aware task plan using ONLY "
         "these allowlisted local task kinds and exact payload fields: "
         + json.dumps({k: sorted(v) for k, v in ALLOWED.items()})
-        + ". Never invent evidence, supplier quotes, market demand, prices, stock, sales, or credentials. "
+        + ". For commerce.mission, provide all required product inputs and include optional fee assumptions only when the user supplied them. "
+        + "A commerce.mission runs Aureon's complete local product workflow: live trends/news collection, supplied competitor URL review, saved supplier-quote comparison, unit economics, product record, editable artwork, listing and launch-copy drafts, plus AI research analysis. "
+        + "Use conservative explicit assumptions only where the mission code defines defaults; never invent evidence, supplier quotes, market demand, prices, stock, sales, or credentials. "
         "If essential input is missing, ask ONE concise question in needs_input and do not create tasks. "
         "Do not ask for information that can be safely left as an explicit assumption. "
         "Do not create tasks for publishing, spending, payment, placing supplier orders, customer messaging, "
