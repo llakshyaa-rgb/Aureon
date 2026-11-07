@@ -161,6 +161,9 @@ def collect_keyword_research(db_path, keywords, geo="IN", limit=20):
     return {"provider": result["provider"], "geo": result["geo"],
             "fetched_at": result["fetched_at"], "fetched": result["count"],
             "created": len(created), "record_ids": created,
+            "sources": [{"keyword": item["keyword"], "title": item["title"],
+                         "url": item["url"], "source": item["source"],
+                         "published_at": item["published_at"]} for item in result["items"]],
             "errors": result["errors"], "limitations": result["limitations"]}
 
 
