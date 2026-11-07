@@ -154,8 +154,8 @@ def _ai_work(db_path, payload, context):
     raw = response["content"].strip()
     # Be tolerant of providers that wrap JSON in Markdown fences or add a short preamble.
     if raw.startswith("```"):
-        raw = re.sub(r"^\`\`\`(?:json)?\\s*", "", raw, flags=re.I)
-        raw = re.sub(r"\\s*\`\`\`$", "", raw)
+        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.I)
+        raw = re.sub(r"\s*```$", "", raw)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
