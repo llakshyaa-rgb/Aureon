@@ -144,7 +144,7 @@ def draft_plan(db_path, objective, context=None):
         "Only choose these safe local task kinds and exact payload fields: " +
         json.dumps({k: sorted(v) for k, v in ALLOWED.items()}) +
         ". When the objective is to research and prepare a product launch, prefer one commerce.mission task over separate disconnected tasks. "
-        ". A commerce.mission task executes Aureon's complete local product workflow and must include every required payload field. "
+        "A commerce.mission task executes Aureon's complete local product workflow and must include every required payload field. "
         + "Never add shell, network publishing, ad spend, payments, supplier ordering, customer messaging, "
         "deletion, or account changes. Do not fabricate observations or evidence. If inputs are missing, "
         "choose only tasks that can run with supplied context; otherwise explain gaps in rationale. "
