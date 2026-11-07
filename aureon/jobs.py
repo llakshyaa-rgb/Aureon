@@ -70,8 +70,8 @@ def recover_interrupted(path: Path):
         conn.execute("BEGIN IMMEDIATE")
         rows = conn.execute("SELECT id,kind,attempts,max_attempts FROM jobs WHERE status='running'").fetchall()
         for row in rows:
-            status = "queued" if row["kind"] != "agent.run" and row["attempts"] < row["max_attempts"] else "failed"
-            message = "Recovered after process interruption." if status == "queued" else "Multi-step agent plans are not replayed after interruption." if row["kind"] == "agent.run" else "Retry limit exhausted during process interruption."
+            status = "queued" if row["kind"] not in {"agent.run", "commerce.mission"} and row["attempts"] < row["max_attempts"] else "failed"
+            message = "Recovered after process interruption." if status == "queued" else "Multi-step workflows are not replayed after interruption to avoid duplicate records." if row["kind"] in {"agent.run", "commerce.mission"} else "Retry limit exhausted during process interruption."
             conn.execute("UPDATE jobs SET status=?,error=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
                          (status, message, row["id"]))
             conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
