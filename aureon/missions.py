@@ -151,19 +151,55 @@ def _ai_work(db_path, payload, context):
         + json.dumps(context, ensure_ascii=False)[:18000]
     )
     response = generate(db_path, system, prompt, json_mode=True)
+    raw = response["content"].strip()
+    # Be tolerant of providers that wrap JSON in Markdown fences or add a short preamble.
+    if raw.startswith("```"):
+        raw = re.sub(r"^\`\`\`(?:json)?\\s*", "", raw, flags=re.I)
+        raw = re.sub(r"\\s*\`\`\`$", "", raw)
     try:
-        data = json.loads(response["content"])
+        data = json.loads(raw)
     except json.JSONDecodeError:
-        raise RuntimeError("Selected model did not return valid JSON. Try another model or lower output complexity.")
+        start, end = raw.find("{"), raw.rfind("}")
+        if start >= 0 and end > start:
+            try:
+                data = json.loads(raw[start:end + 1])
+            except json.JSONDecodeError:
+                data = None
+        else:
+            data = None
     if not isinstance(data, dict):
-        raise RuntimeError("Selected model returned an invalid structured response.")
-    for field in ("listing_title", "listing_description", "marketing_headline", "marketing_copy"):
+        raise RuntimeError("Selected model did not return a usable structured response. Try a JSON-capable model or reduce the prompt size.")
+    # Missing copy fields get safe local drafts; a partial model response should not discard all useful work.
+    from .commerce import generate_listing_draft, draft_marketing_content
+    fallback_listing = generate_listing_draft(
+        {"title": payload["product_title"], "features": payload["concept"]},
+        payload["audience"], payload["keywords"])
+    fallback_marketing = draft_marketing_content(
+        payload["product_title"], payload["audience"], "instagram",
+        payload["concept"], "Explore the collection")
+    defaults = {
+        "listing_title": fallback_listing.get("title", payload["product_title"]),
+        "listing_description": fallback_listing.get("description", payload["concept"]),
+        "marketing_headline": fallback_marketing.get("headline", payload["product_title"]),
+        "marketing_copy": fallback_marketing.get("copy", payload["concept"]),
+    }
+    for field, fallback in defaults.items():
         if not isinstance(data.get(field), str) or not data[field].strip():
-            raise RuntimeError("Selected model omitted required field: " + field)
+            data[field] = fallback
     tags = data.get("tags", [])
-    if not isinstance(tags, list) or any(not isinstance(x, str) for x in tags):
+    if not isinstance(tags, list):
         tags = payload["keywords"]
-    data["tags"] = [x.strip()[:80] for x in tags if x.strip()][:20]
+    data["tags"] = [x.strip()[:80] for x in tags if isinstance(x, str) and x.strip()][:20] or payload["keywords"]
+    analysis = data.get("research_analysis")
+    if not isinstance(analysis, dict):
+        analysis = {}
+    analysis.setdefault("executive_summary", "The model generated draft assets, but did not provide a complete evidence analysis.")
+    analysis.setdefault("opportunities", [])
+    analysis.setdefault("risks", [])
+    analysis.setdefault("recommended_next_steps", [])
+    analysis.setdefault("missing_evidence", [])
+    analysis.setdefault("confidence", "low")
+    data["research_analysis"] = analysis
     data["_provider"] = response["provider"]
     data["_model"] = response["model"]
     return {"status": "completed", "provider": response["provider"], "model": response["model"], "assets": data}
@@ -222,8 +258,14 @@ def run_mission(db_path, payload):
     product = step("Product workspace record",
         lambda: create_record(db_path, "product", payload["product_title"], {
             "product_type": payload["product_type"], "selling_price": payload["selling_price"],
-            "cost": product_cost, "currency": payload["currency"],
+            "cost": round(product_cost + shipping_cost, 2),
+            "product_cost": product_cost, "shipping_cost": shipping_cost,
+            "landed_cost": round(product_cost + shipping_cost, 2),
+            "currency": payload["currency"],
             "vendor": best["supplier"] if best else "",
+            "supplier_quote": ({"supplier_id": best["supplier_id"],
+                "quoted_at": best["quoted_at"], "freshness": best["freshness"],
+                "verification": best["status"], "source": "operator-entered quote"} if best else None),
             "description": ai_assets.get("listing_description", payload["concept"]),
             "tags": ai_assets.get("tags", payload["keywords"]),
             "source": "Aureon autonomous mission",
@@ -253,11 +295,29 @@ def run_mission(db_path, payload):
         return create_record(db_path, "campaign",
             "Draft · " + payload["product_title"], {"draft": draft}, "draft")
     marketing = step("Launch copy draft", marketing_record)
-    ai_review = ({"status": "completed", "provider": ai_work.get("provider"),
-                  "model": ai_work.get("model"), "analysis": ai_assets.get("research_analysis"),
-                  "warning": "AI-generated copy and analysis are drafts, not verified facts."}
-                 if ai_assets else {"status": "unavailable",
-                  "message": "AI assets unavailable; deterministic draft fallbacks were used."})
+    if ai_assets:
+        analysis = dict(ai_assets.get("research_analysis") or {})
+        analysis.setdefault("data_visuals", [])
+        # Build a factual cost/profit visual from Aureon's own calculator output when available.
+        if economics and not analysis["data_visuals"]:
+            chart_items = [
+                {"label": "Selling price", "value": round(float(economics.get("selling_price", payload["selling_price"])), 2)},
+                {"label": "Total estimated cost", "value": round(float(economics.get("total_cost", product_cost + shipping_cost)), 2)},
+                {"label": "Estimated profit", "value": round(float(economics.get("estimated_profit", 0)), 2)},
+            ]
+            analysis["data_visuals"] = [{"title": "Unit economics · " + payload["currency"], "data": chart_items}]
+        analysis["metrics"] = {
+            "selling_price": round(float(economics.get("selling_price", payload["selling_price"])), 2) if economics else payload["selling_price"],
+            "landed_supplier_cost": round(product_cost + shipping_cost, 2),
+            "estimated_profit": round(float(economics.get("estimated_profit", 0)), 2) if economics else 0,
+            "profit_margin_percent": round(float(economics.get("profit_margin", 0)) * 100, 1) if economics else 0,
+        }
+        ai_review = {"status": "completed", "provider": ai_work.get("provider"),
+                     "model": ai_work.get("model"), "analysis": analysis,
+                     "warning": "AI-generated analysis is advisory. Numeric metrics and chart values come from Aureon's calculator; supplier quotes remain unverified."}
+    else:
+        ai_review = {"status": "unavailable",
+                     "message": "AI assets unavailable; deterministic draft fallbacks were used."}
 
     result = {
         "mode": "autonomous_local_workflow",
