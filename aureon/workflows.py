@@ -36,13 +36,17 @@ def initialize_workspace(path):
   conn.execute("UPDATE approvals SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','+24 hours') WHERE status='pending' AND expires_at IS NULL")
 def _record(row):
  item=dict(row);item["data"]=json.loads(item.pop("data_json"));return item
-def create_record(path,kind,title,data=None,status=None):
+def create_record(path,kind,title,data=None,status=None,idempotency_key=None):
  if kind not in KINDS: raise ValueError("unsupported record type")
  if not isinstance(title,str) or not title.strip() or len(title)>200: raise ValueError("title must be 1-200 characters")
  if data is not None and not isinstance(data,dict): raise ValueError("data must be an object")
  status=status or ("research" if kind in {"opportunity","supplier"} else "simulated" if kind=="order" else "open" if kind=="support_ticket" else "active" if kind=="customer" else "draft" if kind in {"product","listing","campaign"} else "brief")
  if status not in STATUSES[kind]: raise ValueError("invalid status for "+kind)
- payload=data or {}
+ payload=dict(data or {})
+ if idempotency_key is not None:
+  if not isinstance(idempotency_key,str) or not idempotency_key.strip() or len(idempotency_key)>200:
+   raise ValueError("idempotency_key must be 1-200 characters")
+  payload["_idempotency_key"]=idempotency_key.strip()
  if kind=="opportunity":
   evidence=payload.get("evidence",[])
   if not isinstance(evidence,list) or not evidence: raise ValueError("opportunity requires evidence")
@@ -52,6 +56,14 @@ def create_record(path,kind,title,data=None,status=None):
   price=payload.get("selling_price")
   if price is not None and (isinstance(price,bool) or not isinstance(price,(int,float)) or not math.isfinite(price) or price<0): raise ValueError("selling_price must be finite and non-negative")
  with connect(path) as conn:
+  conn.execute("BEGIN IMMEDIATE")
+  if idempotency_key is not None:
+   rows=conn.execute("SELECT id,data_json FROM workspace_records WHERE kind=? ORDER BY id DESC LIMIT 500",(kind,)).fetchall()
+   for existing in rows:
+    try: existing_data=json.loads(existing["data_json"])
+    except (TypeError,ValueError): continue
+    if existing_data.get("_idempotency_key")==idempotency_key.strip():
+     return _record(conn.execute("SELECT * FROM workspace_records WHERE id=?",(existing["id"],)).fetchone())
   cur=conn.execute("INSERT INTO workspace_records(kind,status,title,data_json) VALUES(?,?,?,?)",(kind,status,title.strip(),json_dump(payload)))
   row=conn.execute("SELECT * FROM workspace_records WHERE id=?",(cur.lastrowid,)).fetchone()
   conn.execute("INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",("workspace."+kind+".created",kind,str(cur.lastrowid),json_dump({"status":status})))
