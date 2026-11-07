@@ -262,7 +262,7 @@ def run_mission(db_path, payload):
     result = {
         "mode": "autonomous_local_workflow",
         "ai_review": ai_review,
-        "planner": ("deterministic safe workflow with AI analyst review" if isinstance(ai_review, dict) and ai_review.get("status") == "completed" else "deterministic safe workflow; configure an LLM in Settings for AI analysis"),
+        "planner": ("deterministic safety-gated workflow with LLM-generated listing, launch copy and analysis" if isinstance(ai_review, dict) and ai_review.get("status") == "completed" else "deterministic safety-gated workflow with local draft fallbacks; configure an LLM in Settings"),
         "product_title": payload["product_title"],
         "status": "completed_with_warnings" if warnings else "completed",
         "steps": steps,
