@@ -67,18 +67,47 @@ def validate_svg_artwork(svg, width=4500, height=5400, safe_margin=250):
                 raise ValueError("unsupported or active SVG attribute: " + name)
     if root.tag.rsplit("}", 1)[-1] != "svg":
         raise ValueError("artwork root must be SVG")
+    width_attr = root.attrib.get("width", "")
+    height_attr = root.attrib.get("height", "")
+    view_box = root.attrib.get("viewBox", "").replace(",", " ").split()
+    dimension_match = (width_attr == str(width) and height_attr == str(height))
+    viewbox_match = False
+    if len(view_box) == 4:
+        try:
+            vb = [float(x) for x in view_box]
+            viewbox_match = vb == [0.0, 0.0, float(width), float(height)]
+        except ValueError:
+            viewbox_match = False
+    texts = [el for el in root.iter() if el.tag.rsplit("}", 1)[-1] == "text"]
+    text_content = " ".join("".join(el.itertext()) for el in texts).strip()
+    all_text_present = bool(texts) and bool(text_content)
+    text_overflow = False
+    for el in texts:
+        try:
+            x = float(el.attrib.get("x", "0"))
+            y = float(el.attrib.get("y", "0"))
+            fs = float(el.attrib.get("font-size", "0"))
+            if x < safe_margin or x > width - safe_margin or y < safe_margin or y > height - safe_margin or fs <= 0:
+                text_overflow = True
+        except (TypeError, ValueError):
+            text_overflow = True
+    forbidden_content = any(token in lowered for token in ("<script", "foreignobject", "onload=", "onclick="))
     checks = {
         "svg_document": True,
         "print_dimensions": width >= 3000 and height >= 3000,
+        "declared_dimensions_match": dimension_match and viewbox_match,
         "transparent_background": 'background="' not in svg and "<rect" not in svg,
-        "safe_area": isinstance(safe_margin, int) and safe_margin >= 150,
+        "safe_area": isinstance(safe_margin, int) and safe_margin >= 150 and not text_overflow,
+        "text_present_and_inside_safe_area": all_text_present and not text_overflow,
+        "no_active_content": not forbidden_content,
         "file_size": len(svg.encode("utf-8")) <= 200000,
         "vector_format": True,
     }
     return {"passed": all(checks.values()), "checks": checks,
             "dimensions_px": {"width": width, "height": height},
-            "safe_margin_px": safe_margin,
-            "warnings": ["Review trademark/copyright and print-provider templates manually.",
+            "safe_margin_px": safe_margin, "text_elements": len(texts),
+            "warnings": ["Automated checks cannot establish trademark, copyright or visual-quality clearance.",
+                         "Review print-provider templates and manually inspect small text and contrast.",
                          "SVG preview is vector artwork; raster export is not included."]}
 
 
