@@ -1,7 +1,8 @@
-"""Evidence-first product research helpers using explicitly supplied observations."""
+"""Evidence-first competitor analysis from explicitly supplied observations."""
 import math
 from datetime import datetime, timezone
 from urllib.parse import urlparse
+from collections import Counter
 
 
 def _number(value, label, minimum=0, maximum=100000000):
@@ -39,34 +40,75 @@ def validate_observations(observations):
                 raise ValueError()
         except ValueError:
             raise ValueError("collected_at must be timezone-aware ISO-8601") from None
-        clean.append({"url": url, "title": str(item.get("title", ""))[:200],
-                      "price": round(price, 2), "currency": str(item.get("currency", "USD")).upper(),
-                      "reviews": reviews, "availability": str(item.get("availability", "unknown"))[:80],
-                      "collected_at": dt.astimezone(timezone.utc).isoformat()})
+        currency = str(item.get("currency", "USD")).upper()
+        if len(currency) != 3 or not currency.isascii() or not currency.isalpha():
+            raise ValueError("currency must be a three-letter code")
+        clean.append({
+            "url": url, "domain": (parsed.hostname or "").lower(),
+            "title": str(item.get("title", ""))[:200],
+            "price": round(price, 2), "currency": currency,
+            "reviews": reviews, "availability": str(item.get("availability", "unknown"))[:80],
+            "collected_at": dt.astimezone(timezone.utc).isoformat(),
+        })
     if not clean:
         raise ValueError("at least one unique valid observation is required")
     currencies = {x["currency"] for x in clean}
-    if len(currencies) != 1 or any(len(x) != 3 or not x.isascii() or not x.isalpha() for x in currencies):
-        raise ValueError("all observed prices must use one valid currency")
+    if len(currencies) != 1:
+        raise ValueError("all observed prices must use one currency")
     return clean
+
+
+def _percentile(values, fraction):
+    if not values:
+        return 0.0
+    position = (len(values) - 1) * fraction
+    low = int(math.floor(position))
+    high = int(math.ceil(position))
+    if low == high:
+        return values[low]
+    return values[low] + (values[high] - values[low]) * (position - low)
 
 
 def analyze_competition(observations):
     items = validate_observations(observations)
     prices = sorted(x["price"] for x in items)
     reviews = [x["reviews"] for x in items]
+    now = datetime.now(timezone.utc)
+    ages = []
+    for item in items:
+        collected = datetime.fromisoformat(item["collected_at"])
+        ages.append(max(0.0, (now - collected).total_seconds() / 86400))
     n = len(items)
-    median = prices[n // 2] if n % 2 else (prices[n//2-1] + prices[n//2]) / 2
+    median = _percentile(prices, .5)
+    q1, q3 = _percentile(prices, .25), _percentile(prices, .75)
     availability = sum(x["availability"].lower() in {"in stock", "available"} for x in items)
-    concentration = max(reviews) / max(1, sum(reviews))
-    # This is a transparent heuristic over supplied observations, not a market census.
-    saturation = min(100, round(20 + min(n, 30) * 1.6 + min(sum(reviews), 10000) / 250
+    total_reviews = sum(reviews)
+    concentration = max(reviews) / max(1, total_reviews)
+    saturation = min(100, round(20 + min(n, 30) * 1.6 + min(total_reviews, 10000) / 250
                                   + concentration * 15, 1))
-    return {"observation_count": n, "currency": items[0]["currency"],
-            "price_min": round(prices[0], 2), "price_median": round(median, 2),
-            "price_max": round(prices[-1], 2), "review_total": sum(reviews),
-            "availability_observed": availability, "saturation_heuristic": saturation,
-            "observations": items,
-            "limitations": ["Only supplied URLs and observations are included.",
-                            "No marketplace crawl, sales volume, market share or demand is inferred.",
-                            "Saturation is a heuristic, not a verified market-wide measure."]}
+    age_sorted = sorted(ages)
+    freshness = "fresh" if max(ages) <= 7 else "mixed" if median <= 30 else "stale"
+    sample_confidence = "low" if n < 5 else "moderate" if n < 15 else "sampled"
+    domain_counts = Counter(x["domain"] for x in items)
+    return {
+        "observation_count": n, "currency": items[0]["currency"],
+        "price_min": round(prices[0], 2), "price_q1": round(q1, 2),
+        "price_median": round(median, 2), "price_q3": round(q3, 2),
+        "price_max": round(prices[-1], 2), "price_spread": round(prices[-1] - prices[0], 2),
+        "review_total": total_reviews, "review_median": round(_percentile(sorted(reviews), .5), 1),
+        "availability_observed": availability,
+        "availability_rate_percent": round(availability / n * 100, 1),
+        "saturation_heuristic": saturation,
+        "sample_confidence": sample_confidence,
+        "freshness": freshness, "oldest_observation_days": round(max(ages), 1),
+        "newest_observation_days": round(min(ages), 1),
+        "source_domain_count": len(domain_counts),
+        "source_domains": dict(domain_counts),
+        "observations": items,
+        "limitations": [
+            "Only supplied URLs and observations are included; Aureon does not crawl marketplaces here.",
+            "Review counts and availability are snapshots, not sales volume or verified stock.",
+            "Saturation is a heuristic, not a verified market-wide measure.",
+            "A small or concentrated sample has low confidence; do not generalise beyond these sources.",
+        ],
+    }
