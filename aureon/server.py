@@ -172,6 +172,24 @@ def make_handler(db_path):
                   "progress_status":run_data.get("progress_status")}
      return self._send(200,{"job":job,"progress":progress})
     except ValueError as exc: return self._send(400,{"error":str(exc)})
+   if path.startswith("/api/agents/runs/"):
+    try:
+     run_id=int(path.split("/")[4])
+     with connect(db_path) as conn:
+      row=conn.execute("SELECT id,status,title,created_at,data_json FROM workspace_records WHERE id=? AND kind='agent_run'",(run_id,)).fetchone()
+      if row is None: return self._send(404,{"error":"run_not_found"})
+      data=json.loads(row["data_json"])
+      ids=data.get("job_ids",[])
+      jobs=[]
+      if ids:
+       marks=",".join("?" for _ in ids)
+       jobs=[dict(item) for item in conn.execute("SELECT id,kind,status,error,result_json FROM jobs WHERE id IN ("+marks+")",ids).fetchall()]
+       for item in jobs:
+        item["result"]=json.loads(item.pop("result_json")) if item.get("result_json") else None
+      job_states=[item["status"] for item in jobs]
+      status=data.get("progress_status") or ("succeeded" if job_states and all(x=="succeeded" for x in job_states) else "failed" if any(x=="failed" for x in job_states) else "running" if any(x=="running" for x in job_states) else "queued")
+      return self._send(200,{"run":{"id":row["id"],"status":status,"title":row["title"],"tasks":data.get("tasks",[]),"progress":data.get("progress",[]),"current_step":data.get("current_step"),"completed_steps":data.get("completed_steps",0),"warnings":data.get("warnings",[]),"step_outputs":data.get("step_outputs",[]),"step_states":data.get("step_states",[])},"jobs":jobs})
+    except ValueError as exc: return self._send(400,{"error":str(exc)})
    if path=="/api/command-center": return self._send(200,dashboard_snapshot(db_path))
    return self._send(404,{"error":"not_found"})
   def do_POST(self):
