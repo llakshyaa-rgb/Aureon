@@ -203,14 +203,24 @@ def _normalize_chat_tasks(tasks):
         if not isinstance(item, dict):
             normalized.append(item)
             continue
-        kind = item.get("kind") or item.get("type") or item.get("task_type") or item.get("task") or item.get("action")
-        kind = kind_aliases.get(kind, kind)
+        kind = item.get("kind") or item.get("type") or item.get("task_type") or item.get("action") or item.get("tool") or item.get("function")
+        if isinstance(kind, dict):
+            kind = kind.get("name") or kind.get("type") or kind.get("kind")
+        if isinstance(kind, str):
+            kind = kind_aliases.get(kind.strip().lower(), kind.strip())
         payload = item.get("payload")
         if not isinstance(payload, dict):
-            for key in ("input", "arguments", "params", "parameters"):
+            for key in ("input", "arguments", "params", "parameters", "data"):
                 if isinstance(item.get(key), dict):
                     payload = item[key]
                     break
+        # Some models omit the task-kind label or put payload fields at task root.
+        # Infer only the unmistakable commerce-mission shape.
+        commerce_fields = {"product_title", "product_name", "concept", "product_concept", "selling_price", "price"}
+        if not isinstance(payload, dict) and commerce_fields.intersection(item):
+            payload = {k: v for k, v in item.items() if k not in {"kind", "type", "task_type", "action", "tool", "function", "depends_on"}}
+        if not kind and isinstance(payload, dict) and commerce_fields.intersection(payload):
+            kind = "commerce.mission"
         if isinstance(payload, dict) and kind == "commerce.mission":
             payload = dict(payload)
             for old, new in payload_aliases.items():
