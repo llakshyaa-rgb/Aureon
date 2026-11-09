@@ -463,28 +463,52 @@ function openAureonChat(id){
  const status=document.getElementById("aureonChatStatus");if(status)status.textContent="Loaded saved conversation.";
 }
 function clearAureonChat(){startAureonChat(true)}
+function agentRunReport(run){
+ const outputs=Array.isArray(run.step_outputs)?run.step_outputs:[],mw=outputs.find(x=>x&&x.kind==="commerce.mission"),mission=mw&&mw.result?mw.result:null,lines=[],state=run.status||"unknown";
+ lines.push(state==="succeeded"?"Finished successfully.":state==="completed_with_warnings"?"Finished, but some parts need attention.":state==="failed"?"The workflow failed.":"Workflow status: "+state+".");
+ const steps=mission&&Array.isArray(mission.steps)?mission.steps:[];
+ if(steps.length){lines.push("Work completed: "+steps.filter(x=>x.status==="succeeded").length+" of "+steps.length+" mission stages.");steps.forEach(x=>lines.push((x.status==="succeeded"?"✓ ":"! ")+x.name+(x.error?": "+x.error:"")));}
+ else if(Array.isArray(run.tasks))lines.push("Planned tasks: "+run.tasks.map(x=>humanLabel(x.kind)).join(", "));
+ const out=mission&&mission.outputs||{},product=out.product,art=out.artwork,listing=out.listing,marketing=out.marketing_draft,e=out.economics||mission&&mission.ai_review&&mission.ai_review.analysis&&mission.ai_review.analysis.financial_breakdown;
+ if(product)lines.push("Product record saved: "+(product.title||product.id||"yes")+(product.id?" · #"+product.id:""));
+ if(art)lines.push("Artwork saved: asset #"+(art.record_id||"saved")+(art.qa&&art.qa.status?" · QA "+art.qa.status:""));
+ if(listing)lines.push("Listing draft saved: "+(listing.title||"yes")+(listing.record_id?" · #"+listing.record_id:""));
+ if(marketing)lines.push("Marketing draft saved: "+(marketing.title||"yes")+(marketing.record_id?" · #"+marketing.record_id:""));
+ if(e)lines.push("Estimated economics: "+(e.currency||"")+" "+(e.selling_price??"—")+" price · "+(e.total_cost??"—")+" cost · "+(e.estimated_profit??"—")+" estimated profit · "+(e.profit_margin!=null?(Number(e.profit_margin)*100).toFixed(1)+"% margin":"margin unavailable"));
+ const research=out.keyword_news_research||{},trend=out.trend_collection||{};lines.push("Research collected: "+(research.fetched??(research.items&&research.items.length)??0)+" news items · "+(trend.count??(trend.items&&trend.items.length)??0)+" trend signals.");
+ const warnings=[...(mission&&mission.warnings||[]),...(run.warnings||[])];if(warnings.length)lines.push("Needs attention: "+warnings.join(" · "));
+ if(mission&&mission.external_actions_taken===false)lines.push("No external publishing, spending or supplier orders were made.");
+ if(!mission&&!steps.length)lines.push("Open Worker Activity → Details for the stored execution result.");
+ return lines.join("\n");
+}
+async function monitorAgentRun(runId){
+ for(let attempt=0;attempt<180;attempt++){
+  try{
+   const data=await get("/api/agents/runs/"+encodeURIComponent(runId)),run=data.run||{},state=run.status||"queued";let bubble=-1;
+   for(let i=aureonChatHistory.length-1;i>=0;i--)if(aureonChatHistory[i].meta==="Run #"+runId+" · Working"){bubble=i;break}
+   if(bubble>=0){const count=Number(run.completed_steps)||0,total=(run.tasks||[]).length;aureonChatHistory[bubble].content="I'm working through the tasks. "+count+(total?" of "+total+" steps recorded.":" steps recorded.")+(run.current_step?"\nCurrent: "+run.current_step:"");renderAureonConversation();saveAureonChat();}
+   if(["succeeded","completed_with_warnings","failed"].includes(state)){
+    aureonChatHistory.push({role:"assistant",content:agentRunReport({...run,jobs:data.jobs||[]}),meta:"Run #"+runId+" · Final execution report"});renderAureonConversation();saveAureonChat();
+    const st=document.getElementById("aureonChatStatus");if(st)st.textContent=state==="failed"?"Run failed · report ready":state==="completed_with_warnings"?"Finished with warnings · report ready":"Work completed · report ready";refresh();return;
+   }
+  }catch(error){}
+  await new Promise(resolve=>setTimeout(resolve,2000));
+ }
+ aureonChatHistory.push({role:"assistant",content:"I haven't received a final execution status yet. The run may still be active. Check Worker Activity → Details; I won't claim it finished without a confirmed result.",meta:"Run #"+runId+" · Status not confirmed"});renderAureonConversation();saveAureonChat();
+}
 async function sendAureonChat(event){
- if(event)event.preventDefault();
- const input=document.getElementById("aureonChatInput"),send=document.getElementById("aureonChatSend"),status=document.getElementById("aureonChatStatus");
- const message=input.value.trim();if(!message)return;
- if(!activeAureonChatId)activeAureonChatId=aureonChatId();
- aureonChatHistory.push({role:"user",content:message});renderAureonConversation();saveAureonChat();
- input.value="";send.disabled=true;status.textContent="Aureon is thinking…";
+ if(event)event.preventDefault();const input=document.getElementById("aureonChatInput"),send=document.getElementById("aureonChatSend"),status=document.getElementById("aureonChatStatus"),message=input.value.trim();if(!message)return;
+ if(!activeAureonChatId)activeAureonChatId=aureonChatId();aureonChatHistory.push({role:"user",content:message});renderAureonConversation();saveAureonChat();input.value="";send.disabled=true;status.textContent="Aureon is thinking…";
  try{
-  const result=await post("/api/agents/chat",{message,history:aureonChatHistory.slice(0,-1).slice(-12)});
-  const meta=[result.provider,result.model].filter(Boolean).join(" · ");
-  aureonChatHistory.push({role:"assistant",content:result.reply||"Done.",meta}); 
+  const result=await post("/api/agents/chat",{message,history:aureonChatHistory.slice(0,-1).slice(-12)}),meta=[result.provider,result.model].filter(Boolean).join(" · ");
   if(result.status==="queued"){
    const taskText=(result.tasks||[]).map((t,i)=>(i+1)+". "+humanLabel(t.kind)).join(" · ");
-   aureonChatHistory.push({role:"assistant",content:"I've queued the local workflow. "+taskText,meta:"Run #"+result.run_id+" · Follow progress in Worker activity"});
-   status.textContent="Worker started · run #"+result.run_id;refresh();
-  }else if(result.status==="needs_input")status.textContent="Waiting for your reply.";
-  else status.textContent="Ready";
-  renderAureonConversation();saveAureonChat();
- }catch(error){
-  aureonChatHistory.push({role:"assistant",content:"I couldn't process that request: "+String(error),meta:"Check your model connection above."});
-  renderAureonConversation();saveAureonChat();status.textContent="Request failed";
- }finally{send.disabled=false;input.focus()}
+   aureonChatHistory.push({role:"assistant",content:(result.reply||"I've accepted the task.")+"\n\nStarted run #"+result.run_id+". "+taskText+"\nI'll report back here when execution finishes.",meta:"Run #"+result.run_id+" · Working"});
+   status.textContent="Working · run #"+result.run_id;renderAureonConversation();saveAureonChat();refresh();send.disabled=false;input.focus();monitorAgentRun(result.run_id);return;
+  }
+  aureonChatHistory.push({role:"assistant",content:result.reply||"Done.",meta});status.textContent=result.status==="needs_input"?"Waiting for your reply.":"Ready";renderAureonConversation();saveAureonChat();
+ }catch(error){aureonChatHistory.push({role:"assistant",content:"I couldn't process that request: "+String(error),meta:"Check your model connection above."});renderAureonConversation();saveAureonChat();status.textContent="Request failed";}
+ finally{send.disabled=false;input.focus()}
 }
 document.addEventListener("DOMContentLoaded",()=>{
  const input=document.getElementById("aureonChatInput");
