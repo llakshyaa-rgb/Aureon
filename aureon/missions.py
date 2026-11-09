@@ -218,7 +218,9 @@ def _ai_work(db_path, payload, context):
         else:
             data = None
     if not isinstance(data, dict):
-        raise RuntimeError("Selected model did not return a usable structured response. Try a JSON-capable model or reduce the prompt size.")
+        # Keep the mission useful when a compatible model ignores JSON mode or returns
+        # malformed structured output. Deterministic local drafts fill the gaps below.
+        data = {}
     # Missing copy fields get safe local drafts; a partial model response should not discard all useful work.
     from .commerce import generate_listing_draft, draft_marketing_content
     fallback_listing = generate_listing_draft(
@@ -353,9 +355,17 @@ def run_mission(db_path, payload):
         warnings.append("Some competitor product pages could not be read; inspect the per-URL errors.")
     if competitor_research and competitor_research.get("requested") and not competitor_research.get("observed"):
         warnings.append("No competitor product-page observations were collected.")
-    comparison = step("Supplier quote comparison",
-                      lambda: compare_supplier_quotes(db_path, payload["product_type"],
-                                                      payload["destination"], payload["currency"]))
+    is_digital = any(term in (payload["product_type"] + " " + payload.get("concept", "")).lower()
+                     for term in ("digital", "ebook", "e-book", "template", "printable", "download", "pdf"))
+    if is_digital:
+        comparison = {"status": "not_applicable", "quotes": [], "best_quote": None,
+                      "reason": "Digital products do not require a physical supplier or shipping quote."}
+        steps.append({"name": "Supplier quote comparison", "status": "not_applicable", "output": comparison})
+        persist_progress("Supplier quote comparison", "not_applicable", output=comparison)
+    else:
+        comparison = step("Supplier quote comparison",
+                          lambda: compare_supplier_quotes(db_path, payload["product_type"],
+                                                          payload["destination"], payload["currency"]))
     # Exclude stale quotes from automatic cost selection; aging quotes remain usable with a warning.
     candidates = comparison.get("quotes", []) if comparison else []
     fresh_candidates = [q for q in candidates if q.get("freshness") == "fresh"]
@@ -371,13 +381,16 @@ def run_mission(db_path, payload):
             warnings.append("Selected supplier quote is not independently verified.")
     else:
         product_cost = payload["product_cost"]
-        shipping_cost = payload["shipping_cost"]
-        cost_source = "operator-provided estimate; no fresh or aging matching supplier quote"
-        warnings.append("No fresh or aging matching supplier quote was available; economics use supplied cost assumptions.")
+        shipping_cost = 0 if is_digital else payload["shipping_cost"]
+        if is_digital:
+            cost_source = "digital delivery assumption: no physical supplier or shipping; platform/payment fees and taxes must still be verified"
+        else:
+            cost_source = "operator-provided estimate; no fresh or aging matching supplier quote"
+            warnings.append("No fresh or aging matching supplier quote was available; economics use supplied cost assumptions.")
 
     economics = step("Unit economics",
         lambda: calculate_unit_economics(Offer(
-            channel="POD / dropshipping estimate",
+            channel="Digital product estimate" if is_digital else "POD / dropshipping estimate",
             selling_price=payload["selling_price"], product_cost=product_cost,
             shipping_cost=shipping_cost, packaging_cost=payload["packaging_cost"],
             platform_fee_rate=payload["platform_fee_rate"], payment_fee_rate=payload["payment_fee_rate"],
@@ -456,7 +469,7 @@ def run_mission(db_path, payload):
         }, "research", idempotency_key=f"mission:{run_id}:product" if run_id is not None else None))
     artwork = step("Editable design artwork",
         lambda: create_asset(db_path, idempotency_key=f"mission:{run_id}:artwork" if run_id is not None else None,
-                             title=payload["product_title"], concept=payload["concept"],
+                             title=payload["product_title"], concept=payload["concept"][:240],
                              style=payload["style"], palette=payload["palette"]))
     def listing_record():
         draft = ({"title": ai_assets["listing_title"],
