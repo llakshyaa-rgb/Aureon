@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from aureon.agents import plan_run, chat_command
+from aureon.agents import plan_run, chat_command, _normalize_chat_tasks
 from aureon.db import initialize
 from aureon.workflows import initialize_workspace
 
@@ -27,6 +27,27 @@ class AgentPlanTests(unittest.TestCase):
                 "shipping_cost": 60
             }
         }
+
+    def test_chat_normalizes_common_commerce_task_aliases(self):
+        normalized = _normalize_chat_tasks([{
+            "type": "commerce_mission",
+            "arguments": {
+                "product_name": "Astronomy T-shirt",
+                "description": "Minimalist planets",
+                "audience": "Students",
+                "product_category": "T-shirt",
+                "destination": "India",
+                "price": 699,
+                "cost": 280,
+                "tags": ["space", "astronomy"],
+            },
+        }])
+        task = normalized[0]
+        self.assertEqual(task["kind"], "commerce.mission")
+        self.assertEqual(task["payload"]["selling_price"], 699)
+        self.assertEqual(task["payload"]["product_cost"], 280)
+        self.assertEqual(task["payload"]["currency"], "INR")
+        self.assertEqual(task["payload"]["style"], "orbit")
 
     def test_commerce_mission_is_a_supported_ai_plan_task(self):
         plan = plan_run("Create astronomy shirt", [self.mission()])
