@@ -28,6 +28,16 @@ OPTIONAL = {
   "tax_rate","return_rate","chargeback_rate","competitor_urls"},
 }
 REFERENCE = {"$from", "path"}
+# Some models append descriptive output fields to a task payload. These are not
+# executable mission inputs; discard them before strict allowlist validation.
+MODEL_ONLY_COMMERCE_FIELDS = {"estimated_profit_margin", "files", "notes"}
+
+
+def _clean_commerce_payload(payload):
+    cleaned = dict(payload)
+    for field in MODEL_ONLY_COMMERCE_FIELDS:
+        cleaned.pop(field, None)
+    return cleaned
 
 
 def _validate_refs(value, current, deps):
@@ -222,7 +232,7 @@ def _normalize_chat_tasks(tasks):
         if not kind and isinstance(payload, dict) and commerce_fields.intersection(payload):
             kind = "commerce.mission"
         if isinstance(payload, dict) and kind == "commerce.mission":
-            payload = dict(payload)
+            payload = _clean_commerce_payload(payload)
             for old, new in payload_aliases.items():
                 if old in payload and new not in payload:
                     payload[new] = payload.pop(old)
@@ -352,7 +362,7 @@ def chat_command(db_path, message, history=None):
         mission_payload = mission_data.get("payload") if isinstance(mission_data, dict) else None
         if not isinstance(mission_payload, dict):
             raise RuntimeError("Aureon could not prepare the integrated product mission. Try again or switch to a JSON-capable model.")
-        mission_payload = dict(mission_payload)
+        mission_payload = _clean_commerce_payload(mission_payload)
         mission_payload.setdefault("destination", "India")
         if str(mission_payload.get("destination", "")).lower() in {"india", "in"}:
             mission_payload.setdefault("currency", "INR")
