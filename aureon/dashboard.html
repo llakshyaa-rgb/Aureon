@@ -224,7 +224,7 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
 .chat-bubble p{white-space:pre-wrap;overflow-wrap:anywhere}
 .chat-bubble.assistant{align-self:flex-start;background:#DCCBB2;color:#18334E;border-bottom-left-radius:4px}
 .chat-bubble.user{align-self:flex-end;background:#C66F52;color:#18334E;border-bottom-right-radius:4px}
-.chat-bubble .chat-meta{display:block;font-size:10px;opacity:.72;margin-top:7px}
+.chat-bubble .chat-meta{display:block;font-size:10px;opacity:.72;margin-top:7px}.chat-copy-response{display:block!important;margin-top:9px!important;min-height:30px!important;padding:5px 10px!important;border-radius:8px!important;background:rgba(24,51,78,.12)!important;color:inherit!important;border:1px solid rgba(24,51,78,.2)!important;box-shadow:none!important;font-size:10px!important}
 .chat-compose{display:flex;gap:9px;align-items:flex-end;background:#DCCBB2;padding:8px;border-radius:13px}
 .chat-compose textarea{display:block;min-height:54px;height:54px;max-height:min(42vh,360px);overflow-y:auto;resize:none;border:0!important;background:transparent!important;box-shadow:none!important;padding:12px!important;color:#18334E!important;line-height:1.5}
 .chat-compose button{align-self:flex-end;flex:0 0 auto;min-width:92px;min-height:46px;white-space:nowrap}
@@ -471,6 +471,19 @@ function addAureonBubble(role,content,meta=""){
  const label=document.createElement("b");label.textContent=role==="user"?"You":"Aureon";bubble.appendChild(label);
  const p=document.createElement("p");p.textContent=content;bubble.appendChild(p);
  if(meta){const m=document.createElement("small");m.className="chat-meta";m.textContent=meta;bubble.appendChild(m)}
+ if(role==="assistant" && !(meta||"").includes("Working")){
+  const copy=document.createElement("button");copy.type="button";copy.className="chat-copy-response";copy.textContent="Copy response";
+  copy.addEventListener("click",async()=>{
+   try{await navigator.clipboard.writeText(String(content));copy.textContent="Copied!";}
+   catch(error){
+    const area=document.createElement("textarea");area.value=String(content);area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();
+    try{document.execCommand("copy");copy.textContent="Copied!";}catch(_){copy.textContent="Copy failed";}
+    area.remove();
+   }
+   setTimeout(()=>{copy.textContent="Copy response";},1600);
+  });
+  bubble.appendChild(copy);
+ }
  box.appendChild(bubble);box.scrollTop=box.scrollHeight;
 }
 function renderAureonConversation(){
