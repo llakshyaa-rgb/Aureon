@@ -250,37 +250,69 @@ def generate(db_path, system, prompt, json_mode=False):
             payload["response_format"] = {"type": "json_object"}
         headers = {"Authorization": "Bearer " + key} if key else {}
         if provider == "openrouter":
-            last_error = None
-            for candidate in candidates:
+            failures = []
+            content = ""
+            selected_model = ""
+            # Free routes can intermittently return HTTP 200 with an empty
+            # message. Retry that route once with a smaller output budget,
+            # then move on to another free model.
+            for candidate in candidates[:12]:
                 model = candidate["id"]
                 payload["model"] = model
-                try:
-                    result = _request_json(base + "/chat/completions", payload, headers)
-                    content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    if isinstance(content, list):
-                        content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-                    if isinstance(content, str) and content.strip():
-                        if json_mode:
-                            candidate_text = content.strip()
-                            if candidate_text.startswith("```"):
-                                candidate_text = candidate_text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-                            try:
-                                parsed = json.loads(candidate_text)
-                            except (TypeError, json.JSONDecodeError):
-                                parsed = None
-                            if not isinstance(parsed, dict):
-                                last_error = RuntimeError("OpenRouter model returned malformed JSON; trying another free model.")
-                                continue
-                            # A long command must not be accepted as a one-word non-answer.
-                            if len(prompt) > 700 and not parsed.get("tasks") and len(str(parsed.get("reply", "")).strip()) < 40 and len(str(parsed.get("needs_input", "")).strip()) < 20:
-                                last_error = RuntimeError("OpenRouter model returned an incomplete answer; trying another free model.")
-                                continue
-                        break
-                    last_error = RuntimeError("OpenRouter model returned an empty response.")
-                except RuntimeError as exc:
-                    last_error = exc
-            else:
-                raise RuntimeError("All tried OpenRouter free models failed. Last error: " + str(last_error))
+                model_error = None
+                for attempt in range(2):
+                    attempt_payload = dict(payload)
+                    if attempt:
+                        attempt_payload["max_tokens"] = min(int(payload.get("max_tokens", 1800)), 1200)
+                        attempt_payload["temperature"] = 0.1
+                    try:
+                        result = _request_json(base + "/chat/completions", attempt_payload, headers)
+                        choices = result.get("choices") if isinstance(result, dict) else None
+                        choice = choices[0] if isinstance(choices, list) and choices else {}
+                        message = choice.get("message") if isinstance(choice, dict) else {}
+                        message = message if isinstance(message, dict) else {}
+                        candidate_content = message.get("content", "")
+                        if isinstance(candidate_content, list):
+                            candidate_content = "".join(
+                                part.get("text", "") for part in candidate_content
+                                if isinstance(part, dict) and isinstance(part.get("text"), str)
+                            )
+                        if isinstance(candidate_content, str) and candidate_content.strip():
+                            if json_mode:
+                                candidate_text = candidate_content.strip()
+                                if candidate_text.startswith("```"):
+                                    candidate_text = candidate_text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+                                try:
+                                    parsed = json.loads(candidate_text)
+                                except (TypeError, json.JSONDecodeError):
+                                    parsed = None
+                                if not isinstance(parsed, dict):
+                                    model_error = "malformed JSON"
+                                    continue
+                                if len(prompt) > 700 and not parsed.get("tasks") and len(str(parsed.get("reply", "")).strip()) < 40 and len(str(parsed.get("needs_input", "")).strip()) < 20:
+                                    model_error = "incomplete answer"
+                                    continue
+                            content = candidate_content
+                            selected_model = model
+                            break
+                        finish = choice.get("finish_reason") if isinstance(choice, dict) else None
+                        model_error = "empty response" + ((" (finish reason: " + str(finish) + ")") if finish else "")
+                    except RuntimeError as exc:
+                        model_error = str(exc)[:240]
+                    if attempt == 0:
+                        continue
+                if content:
+                    break
+                failures.append(model + ": " + (model_error or "no text returned"))
+            if not content:
+                details = "; ".join(failures[-4:])
+                raise RuntimeError(
+                    "OpenRouter's free models are not returning usable text right now. "
+                    "Aureon tried up to 12 models (with one retry each). "
+                    "This is a model-route availability issue, not a problem with your prompt. "
+                    "Last errors: " + details
+                )
+            model = selected_model
         else:
             result = _request_json(base + "/chat/completions", payload, headers)
             content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
