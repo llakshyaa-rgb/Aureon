@@ -289,10 +289,13 @@ def generate(db_path, system, prompt, json_mode=False):
                                     parsed = None
                                 if not isinstance(parsed, dict):
                                     model_error = "malformed JSON"
-                                    continue
+                                    # This model produced text, but not a usable
+                                    # structured answer. Move to the next model
+                                    # rather than spending another retry on it.
+                                    break
                                 if len(prompt) > 700 and not parsed.get("tasks") and len(str(parsed.get("reply", "")).strip()) < 40 and len(str(parsed.get("needs_input", "")).strip()) < 20:
                                     model_error = "incomplete answer"
-                                    continue
+                                    break
                             content = candidate_content
                             selected_model = model
                             break
