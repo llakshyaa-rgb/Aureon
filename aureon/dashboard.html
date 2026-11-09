@@ -302,6 +302,24 @@ button:disabled{opacity:.55}
 .command-next-step{margin-top:16px}
 .command-next-step h3{margin:5px 0;color:#18334E!important}
 .command-next-step p{color:#29465F!important}
+
+.aureon-activity{display:flex;align-items:center;gap:12px;padding:11px 14px;margin:0 0 12px;border:1px solid rgba(151,180,216,.18);border-radius:13px;background:rgba(14,26,42,.72);min-width:0;transition:border-color .2s,background .2s}
+.activity-orb{width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:flex;align-items:center;justify-content:center;gap:3px;background:rgba(67,139,250,.12);border:1px solid rgba(67,139,250,.28)}
+.activity-orb i{width:4px;height:4px;border-radius:50%;background:#8BAFF0;opacity:.5}
+.activity-copy{display:grid;gap:3px;min-width:0;flex:1}.activity-copy b{font-size:12px;color:#E7F0FC}.activity-copy small{font-size:10px;color:#91A6C1;overflow-wrap:anywhere}
+.activity-state{font-size:9px;letter-spacing:.12em;font-weight:800;color:#91A6C1;padding:5px 7px;border-radius:20px;background:rgba(145,166,193,.1)}
+.aureon-activity[data-state="thinking"],.aureon-activity[data-state="working"]{border-color:rgba(67,139,250,.48);background:rgba(31,64,104,.25)}
+.aureon-activity[data-state="thinking"] .activity-orb,.aureon-activity[data-state="working"] .activity-orb{box-shadow:0 0 0 5px rgba(67,139,250,.08),0 0 22px rgba(67,139,250,.18)}
+.aureon-activity[data-state="thinking"] .activity-orb i,.aureon-activity[data-state="working"] .activity-orb i{animation:activity-bounce .85s ease-in-out infinite}
+.aureon-activity[data-state="thinking"] .activity-orb i:nth-child(2),.aureon-activity[data-state="working"] .activity-orb i:nth-child(2){animation-delay:.12s}
+.aureon-activity[data-state="thinking"] .activity-orb i:nth-child(3),.aureon-activity[data-state="working"] .activity-orb i:nth-child(3){animation-delay:.24s}
+.aureon-activity[data-state="done"]{border-color:rgba(54,190,132,.4)}.aureon-activity[data-state="done"] .activity-orb{background:rgba(54,190,132,.13);border-color:rgba(54,190,132,.35)}.aureon-activity[data-state="done"] .activity-orb i{background:#48D49A;opacity:1}
+.aureon-activity[data-state="error"]{border-color:rgba(232,99,99,.45)}.aureon-activity[data-state="error"] .activity-orb{background:rgba(232,99,99,.12);border-color:rgba(232,99,99,.35)}.aureon-activity[data-state="error"] .activity-orb i{background:#F07878;opacity:1}
+.aureon-activity[data-state="thinking"] .activity-state,.aureon-activity[data-state="working"] .activity-state{color:#8DBBFF;background:rgba(67,139,250,.13)}
+.aureon-activity[data-state="done"] .activity-state{color:#69D9A9;background:rgba(54,190,132,.12)}
+.aureon-activity[data-state="error"] .activity-state{color:#FF9292;background:rgba(232,99,99,.12)}
+@keyframes activity-bounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-5px);opacity:1}}
+@media(prefers-reduced-motion:reduce){.aureon-activity *{animation:none!important;transition:none!important}}
 </style></head><body><div class="app-shell"><aside class="sidebar">
 <div class="brand"><div class="brand-mark">A</div><div><strong>AUREON</strong><small>Commerce workspace</small></div></div>
 <div><div class="nav-label">Workspace</div><nav class="nav-list" aria-label="Main sections">
@@ -325,7 +343,7 @@ button:disabled{opacity:.55}
   <details class="settings-drawer" id="modelConnectionDrawer"><summary><span><b>AI model connection</b><small>Choose provider, model ID and API key once. Then chat with Aureon.</small></span><span class="settings-arrow">⌄</span></summary><div class="settings-drawer-body"><section class="overview-tool-panel" id="page-llm-settings" data-title="AI model settings"><h2>AI model settings</h2><p class="muted">Choose a provider and exact model ID. Keys are stored locally on this device; cloud models receive the prompts and business context you send.</p><div class="pm-editor"><div class="grid"><select id="llmProvider" onchange="llmProviderChanged()"><option value="">Loading providers…</option></select><input id="llmModel" placeholder="Exact model ID from provider"></div><div class="grid"><input id="llmBaseUrl" placeholder="API base URL for custom endpoint"></div><div class="grid"><input id="llmApiKey" type="password" autocomplete="new-password" placeholder="API key (blank keeps saved key)"></div><div class="grid"><label>Temperature<input id="llmTemperature" type="number" min="0" max="2" step="0.1" value="0.2"></label><label>Max output tokens<input id="llmMaxTokens" type="number" min="128" max="8192" step="128" value="1800"></label></div><div id="llmProviderHelp" class="result-note">Choose a provider.</div><div id="llmKeyState" class="muted">Loading key status…</div><div class="grid"><button onclick="saveLlmSettings()">Save model settings</button><button onclick="testLlmConnection()">Test connection</button><button class="quiet-action" onclick="clearLlmSettings()">Remove saved model</button></div><div id="llmSettingsResult" class="result-note">No changes made.</div></div></section></div></details>
   <div class="chat-shell">
     <div class="chat-top"><div><strong>Aureon</strong><small>Conversational command centre</small></div><div class="chat-actions"><details class="chat-history-menu"><summary>History</summary><div id="aureonChatHistoryList" class="chat-history-list">No saved chats yet.</div></details><button class="chat-clear" onclick="clearAureonChat()">New chat</button></div></div>
-    <div id="aureonChatMessages" class="chat-messages" aria-live="polite"><div class="chat-bubble assistant"><b>Aureon</b><p>Hey! Tell me in English what you want to achieve. For example: “Research a promising product for India, compare its costs, and prepare a product listing.”</p></div></div>
+    <div id="aureonActivity" class="aureon-activity" data-state="idle" role="status" aria-live="polite"><span class="activity-orb" aria-hidden="true"><i></i><i></i><i></i></span><span class="activity-copy"><b id="aureonActivityTitle">Aureon is ready</b><small id="aureonActivityDetail">Send a message to start.</small></span><span class="activity-state" id="aureonActivityState">IDLE</span></div><div id="aureonChatMessages" class="chat-messages" aria-live="polite"><div class="chat-bubble assistant"><b>Aureon</b><p>Hey! Tell me in English what you want to achieve. For example: “Research a promising product for India, compare its costs, and prepare a product listing.”</p></div></div>
     <form id="aureonChatForm" class="chat-compose" onsubmit="sendAureonChat(event)"><textarea id="aureonChatInput" rows="2" maxlength="12000" placeholder="Tell Aureon what to do…" aria-label="Message Aureon"></textarea><button id="aureonChatSend" type="submit">Send <span>➤</span></button></form>
     <div class="chat-hint">Enter to send · Shift + Enter for a new line · Actions stay local and approval-gated</div>
     <div id="aureonChatStatus" class="chat-status">Ready when you are.</div>
@@ -451,17 +469,27 @@ function renderAureonConversation(){
  if(!aureonChatHistory.length)addAureonBubble("assistant","Hey! Tell me in English what you want to achieve. You can ask me to research, compare, calculate, create or prepare work.");
  aureonChatHistory.forEach(m=>addAureonBubble(m.role,m.content,m.meta||""));
 }
+
+function setAureonActivity(state,title,detail){
+ const box=document.getElementById("aureonActivity");if(!box)return;
+ const labels={idle:"IDLE",thinking:"THINKING",working:"WORKING",done:"DONE",error:"ERROR"};
+ box.dataset.state=state;
+ const heading=document.getElementById("aureonActivityTitle"),sub=document.getElementById("aureonActivityDetail"),badge=document.getElementById("aureonActivityState");
+ if(heading)heading.textContent=title||"Aureon is ready";
+ if(sub)sub.textContent=detail||"";
+ if(badge)badge.textContent=labels[state]||state.toUpperCase();
+}
 function startAureonChat(saveOld=true){
  if(saveOld&&aureonChatHistory.length)saveAureonChat();
  activeAureonChatId=aureonChatId();aureonChatHistory=[];
  renderAureonConversation();renderAureonChatLibrary();
- const status=document.getElementById("aureonChatStatus");if(status)status.textContent="New conversation · ready when you are.";
+ const status=document.getElementById("aureonChatStatus");if(status)status.textContent="New conversation · ready when you are.";setAureonActivity("idle","Aureon is ready","Send a message to start.");
 }
 function openAureonChat(id){
  const chat=aureonChatLibrary.find(c=>c.id===id);if(!chat)return;
  activeAureonChatId=chat.id;aureonChatHistory=chat.messages.slice(-80);
  renderAureonConversation();renderAureonChatLibrary();
- const status=document.getElementById("aureonChatStatus");if(status)status.textContent="Loaded saved conversation.";
+ const status=document.getElementById("aureonChatStatus");if(status)status.textContent="Loaded saved conversation.";setAureonActivity("idle","Conversation loaded","Aureon is ready for your next message.");
 }
 function clearAureonChat(){startAureonChat(true)}
 function agentRunReport(run){
@@ -487,10 +515,10 @@ async function monitorAgentRun(runId){
   try{
    const data=await get("/api/agents/runs/"+encodeURIComponent(runId)),run=data.run||{},state=run.status||"queued";let bubble=-1;
    for(let i=aureonChatHistory.length-1;i>=0;i--)if(aureonChatHistory[i].meta==="Run #"+runId+" · Working"){bubble=i;break}
-   if(bubble>=0){const count=Number(run.completed_steps)||0,total=(run.tasks||[]).length;aureonChatHistory[bubble].content="I'm working through the tasks. "+count+(total?" of "+total+" steps recorded.":" steps recorded.")+(run.current_step?"\nCurrent: "+run.current_step:"");renderAureonConversation();saveAureonChat();}
+   if(bubble>=0){const count=Number(run.completed_steps)||0,total=(run.tasks||[]).length;setAureonActivity("working","Aureon is working",count+(total?" of "+total+" steps completed":" steps completed")+(run.current_step?" · "+run.current_step:""));aureonChatHistory[bubble].content="I'm working through the tasks. "+count+(total?" of "+total+" steps recorded.":" steps recorded.")+(run.current_step?"\nCurrent: "+run.current_step:"");renderAureonConversation();saveAureonChat();}
    if(["succeeded","completed_with_warnings","failed"].includes(state)){
     aureonChatHistory.push({role:"assistant",content:agentRunReport({...run,jobs:data.jobs||[]}),meta:"Run #"+runId+" · Final execution report"});renderAureonConversation();saveAureonChat();
-    const st=document.getElementById("aureonChatStatus");if(st)st.textContent=state==="failed"?"Run failed · report ready":state==="completed_with_warnings"?"Finished with warnings · report ready":"Work completed · report ready";refresh();return;
+    const st=document.getElementById("aureonChatStatus");if(st)st.textContent=state==="failed"?"Run failed · report ready":state==="completed_with_warnings"?"Finished with warnings · report ready":"Work completed · report ready";setAureonActivity(state==="failed"?"error":"done",state==="failed"?"Aureon hit an error":"Aureon finished",state==="failed"?"The run failed. Open the final report for details.":state==="completed_with_warnings"?"Finished, but some steps need attention.":"All tracked tasks finished.");refresh();return;
    }
   }catch(error){}
   await new Promise(resolve=>setTimeout(resolve,2000));
@@ -499,16 +527,16 @@ async function monitorAgentRun(runId){
 }
 async function sendAureonChat(event){
  if(event)event.preventDefault();const input=document.getElementById("aureonChatInput"),send=document.getElementById("aureonChatSend"),status=document.getElementById("aureonChatStatus"),message=input.value.trim();if(!message)return;
- if(!activeAureonChatId)activeAureonChatId=aureonChatId();aureonChatHistory.push({role:"user",content:message});renderAureonConversation();saveAureonChat();input.value="";resizeAureonComposer(input);send.disabled=true;status.textContent="Aureon is thinking…";
+ if(!activeAureonChatId)activeAureonChatId=aureonChatId();aureonChatHistory.push({role:"user",content:message});renderAureonConversation();saveAureonChat();input.value="";resizeAureonComposer(input);send.disabled=true;status.textContent="Aureon is thinking…";setAureonActivity("thinking","Aureon is thinking","Your message was sent. Waiting for the AI response…");
  try{
   const result=await post("/api/agents/chat",{message,history:aureonChatHistory.slice(0,-1).slice(-12)}),meta=[result.provider,result.model].filter(Boolean).join(" · ");
   if(result.status==="queued"){
    const taskText=(result.tasks||[]).map((t,i)=>(i+1)+". "+humanLabel(t.kind)).join(" · ");
    aureonChatHistory.push({role:"assistant",content:(result.reply||"I've accepted the task.")+"\n\nStarted run #"+result.run_id+". "+taskText+"\nI'll report back here when execution finishes.",meta:"Run #"+result.run_id+" · Working"});
-   status.textContent="Working · run #"+result.run_id;renderAureonConversation();saveAureonChat();refresh();send.disabled=false;input.focus();monitorAgentRun(result.run_id);return;
+   status.textContent="Working · run #"+result.run_id;setAureonActivity("working","Aureon is working","Run #"+result.run_id+" · "+(taskText||"Tasks queued")+" · tracking progress…");renderAureonConversation();saveAureonChat();refresh();send.disabled=false;input.focus();monitorAgentRun(result.run_id);return;
   }
-  aureonChatHistory.push({role:"assistant",content:result.reply||"Done.",meta});status.textContent=result.status==="needs_input"?"Waiting for your reply.":"Ready";renderAureonConversation();saveAureonChat();
- }catch(error){aureonChatHistory.push({role:"assistant",content:"I couldn't process that request: "+String(error),meta:"Check your model connection above."});renderAureonConversation();saveAureonChat();status.textContent="Request failed";}
+  aureonChatHistory.push({role:"assistant",content:result.reply||"Done.",meta});status.textContent=result.status==="needs_input"?"Waiting for your reply.":"Ready";setAureonActivity("done",result.status==="needs_input"?"Aureon needs your input":"Aureon replied","The AI response arrived.");renderAureonConversation();saveAureonChat();
+ }catch(error){aureonChatHistory.push({role:"assistant",content:"I couldn't process that request: "+String(error),meta:"Check your model connection above."});renderAureonConversation();saveAureonChat();status.textContent="Request failed";setAureonActivity("error","Aureon could not reply",String(error).slice(0,180));}
  finally{send.disabled=false;input.focus()}
 }
 function resizeAureonComposer(input){
