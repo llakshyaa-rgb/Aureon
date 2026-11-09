@@ -31,7 +31,8 @@ class LLMSettingsTests(unittest.TestCase):
             "provider": "openrouter", "model": "provider/model-id",
             "api_key": "", "temperature": 0.2, "max_tokens": 1024})
         self.assertTrue(again["api_key_set"])
-        self.assertTrue(again["api_key_hint"].endswith("t-key"))
+        self.assertNotIn("api_key_hint", again)
+        self.assertNotIn("secret-test-key", json.dumps(again))
 
     def test_rejects_insecure_cloud_endpoint_and_invalid_model(self):
         with self.assertRaises(ValueError):
