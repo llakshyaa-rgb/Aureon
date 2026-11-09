@@ -300,11 +300,11 @@ def run_mission(db_path, payload):
                                                   if item.get("status") == "succeeded")
                 if status == "succeeded":
                     run_data.setdefault("step_results", {})[name] = {"status": "succeeded", "output": output}
-                elif status in {"needs_attention", "not_configured"}:
+                elif status in {"needs_attention", "not_configured", "not_applicable"}:
                     run_data.setdefault("step_results", {})[name] = {"status": status,
                         **({"error": str(error)[:500]} if error else {})}
                 conn.execute("UPDATE workspace_records SET status=?,data_json=? WHERE id=?",
-                             ("running" if status in {"running", "succeeded", "not_configured"} else "needs_attention",
+                             ("running" if status in {"running", "succeeded", "not_configured", "not_applicable"} else "needs_attention",
                               json_dump(run_data), run_id))
             conn.execute(
                 "INSERT INTO events(topic,entity_type,entity_id,data_json) VALUES(?,?,?,?)",
