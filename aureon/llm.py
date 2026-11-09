@@ -18,6 +18,7 @@ PROVIDERS = {
     "anthropic": {"label": "Anthropic", "protocol": "anthropic", "base_url": "https://api.anthropic.com/v1", "models": "Claude model ID"},
     "gemini": {"label": "Google Gemini", "protocol": "gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta", "models": "Gemini model ID, e.g. gemini-2.5-flash"},
     "openrouter": {"label": "OpenRouter", "protocol": "openai", "base_url": "https://openrouter.ai/api/v1", "models": "Any model slug available in your OpenRouter account"},
+    "apinex": {"label": "APInex", "protocol": "openai", "base_url": "https://api.apinex.bond/v1", "models": "Free DeepSeek model: free/deepseek-v4.1-flash (or another exact APInex model ID)"},
     "groq": {"label": "Groq", "protocol": "openai", "base_url": "https://api.groq.com/openai/v1", "models": "Any Groq-supported model ID"},
     "together": {"label": "Together AI", "protocol": "openai", "base_url": "https://api.together.xyz/v1", "models": "Any Together model ID"},
     "deepseek": {"label": "DeepSeek", "protocol": "openai", "base_url": "https://api.deepseek.com/v1", "models": "Any DeepSeek model ID"},
