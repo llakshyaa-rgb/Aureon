@@ -237,6 +237,13 @@ def _normalize_chat_tasks(tasks):
             "payload": payload,
             **({"depends_on": item.get("depends_on", [])} if "depends_on" in item else {}),
         })
+    # A commerce mission already performs trend/news collection and handles supplied
+    # competitor URLs plus its evidence-bound research review internally. Keeping
+    # separate planner-generated research tasks duplicates those stages and can feed
+    # them free-form strings instead of their strict evidence-object schemas.
+    if any(task.get("kind") == "commerce.mission" for task in normalized):
+        integrated = {"trends.collect", "opportunity.assess", "research.competitors"}
+        normalized = [task for task in normalized if task.get("kind") not in integrated]
     return normalized
 
 
