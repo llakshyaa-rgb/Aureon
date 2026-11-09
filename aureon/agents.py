@@ -319,8 +319,54 @@ def chat_command(db_path, message, history=None):
         reply = ""
     if not isinstance(needs_input, str):
         needs_input = ""
-    tasks = _normalize_chat_tasks(data.get("tasks", []))
-    if needs_input.strip():
+        tasks = _normalize_chat_tasks(data.get("tasks", []))
+        # Hard guard: broad product research/launch requests always use the integrated mission.
+        request_text = message.lower()
+        product_request = any(term in request_text for term in ("product", "digital product", "product idea", "product launch")) and any(
+            term in request_text for term in ("research", "find", "create", "make", "build", "launch", "sell")
+        )
+        if product_request and not any(isinstance(task, dict) and task.get("kind") == "commerce.mission" for task in tasks):
+            mission_system = (
+                "Return ONLY JSON with key payload. Build one complete commerce.mission payload with required fields: "
+                "product_title, concept, audience, product_type, destination, selling_price, product_cost, keywords, style, palette. "
+                "Choose product, niche and audience yourself when delegated. For an India digital download, set destination India, "
+                "currency INR, geo IN, product_cost 0 and shipping_cost 0 as explicit digital-delivery assumptions. "
+                "Choose a plausible INR test price, not a verified market price. Use 3-8 keywords. "
+                "style: orbit/badge/type/botanical/geometric. palette: midnight/sunset/forest/mono/ocean. "
+                "Only include competitor_urls if the user supplied actual URLs. Never invent evidence, URLs, sales or demand. "
+                "Do not ask questions about preferences the user delegated."
+            )
+            mission_prompt = ("USER REQUEST:\\n" + message.strip() + "\\nRECENT CONTEXT:\\n" + json.dumps(clean_history, ensure_ascii=False)[:7000])
+            mission_response = generate(db_path, mission_system, mission_prompt, json_mode=True)
+            mission_raw = mission_response.get("content", "").strip()
+            if mission_raw.startswith("```"):
+                mission_raw = mission_raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+            try:
+                mission_data = json.loads(mission_raw)
+            except (TypeError, json.JSONDecodeError):
+                left, right = mission_raw.find("{"), mission_raw.rfind("}")
+                try:
+                    mission_data = json.loads(mission_raw[left:right + 1]) if left >= 0 and right > left else None
+                except json.JSONDecodeError:
+                    mission_data = None
+            mission_payload = mission_data.get("payload") if isinstance(mission_data, dict) else None
+            if not isinstance(mission_payload, dict):
+                raise RuntimeError("Aureon could not prepare the integrated product mission. Try again or switch to a JSON-capable model.")
+            mission_payload = dict(mission_payload)
+            mission_payload.setdefault("destination", "India")
+            if str(mission_payload.get("destination", "")).lower() in {"india", "in"}:
+                mission_payload.setdefault("currency", "INR")
+                mission_payload.setdefault("geo", "IN")
+            if str(mission_payload.get("product_type", "")).lower() in {"digital download", "digital product", "ebook", "template", "printable"}:
+                mission_payload.setdefault("product_cost", 0)
+                mission_payload.setdefault("shipping_cost", 0)
+            mission_payload.setdefault("style", "orbit")
+            mission_payload.setdefault("palette", "midnight")
+            plan_run("Integrated product mission", [{"kind": "commerce.mission", "payload": mission_payload}])
+            tasks = [{"kind": "commerce.mission", "payload": mission_payload}]
+            response = mission_response
+            reply = "I picked a product direction and prepared one integrated mission. I’m running research, economics, product creation, listing and marketing together."
+        if needs_input.strip() and not tasks:
         return {"reply": needs_input.strip(), "status": "needs_input",
                 "provider": response.get("provider"), "model": response.get("model")}
     if not tasks:
