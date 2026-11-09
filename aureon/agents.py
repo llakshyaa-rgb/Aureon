@@ -54,8 +54,12 @@ def plan_run(name, tasks):
         raise ValueError("plan must contain 1..20 tasks")
     clean = []
     for i, task in enumerate(tasks):
-        if not isinstance(task, dict) or task.get("kind") not in ALLOWED or not isinstance(task.get("payload"), dict):
-            raise ValueError("unsupported task or payload")
+        if not isinstance(task, dict):
+            raise ValueError("task " + str(i) + " must be an object")
+        if task.get("kind") not in ALLOWED:
+            raise ValueError("task " + str(i) + " has unsupported kind: " + repr(task.get("kind")))
+        if not isinstance(task.get("payload"), dict):
+            raise ValueError("task " + str(i) + " payload must be an object")
         missing = ALLOWED[task["kind"]] - set(task["payload"])
         extra = set(task["payload"]) - ALLOWED[task["kind"]] - OPTIONAL.get(task["kind"], set())
         if missing:
@@ -199,11 +203,11 @@ def _normalize_chat_tasks(tasks):
         if not isinstance(item, dict):
             normalized.append(item)
             continue
-        kind = item.get("kind") or item.get("type") or item.get("task")
+        kind = item.get("kind") or item.get("type") or item.get("task_type") or item.get("task") or item.get("action")
         kind = kind_aliases.get(kind, kind)
         payload = item.get("payload")
         if not isinstance(payload, dict):
-            for key in ("input", "arguments", "params"):
+            for key in ("input", "arguments", "params", "parameters"):
                 if isinstance(item.get(key), dict):
                     payload = item[key]
                     break
