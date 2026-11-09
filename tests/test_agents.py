@@ -60,6 +60,16 @@ class AgentPlanTests(unittest.TestCase):
         task["payload"]["payment_fee_rate"] = 0.02
         self.assertEqual(len(plan_run("Create shirt", [task])["tasks"]), 1)
 
+    def test_integrated_commerce_mission_removes_duplicate_research_steps(self):
+        tasks = [
+            {"kind": "trends.collect", "payload": {"geo": "IN"}},
+            {"kind": "opportunity.assess", "payload": {"title": "Planner", "evidence": ["https://example.com"], "signals": {}}},
+            {"kind": "research.competitors", "payload": {"observations": ["https://example.com"]}},
+            self.mission(),
+        ]
+        normalized = _normalize_chat_tasks(tasks)
+        self.assertEqual([task["kind"] for task in normalized], ["commerce.mission"])
+
     def test_commerce_mission_rejects_unknown_fields(self):
         task = self.mission()
         task["payload"]["publish_now"] = True
