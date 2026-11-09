@@ -271,7 +271,7 @@ def chat_command(db_path, message, history=None):
         "For a clear request to do work, create a short dependency-aware task plan using ONLY "
         "these allowlisted local task kinds and exact payload fields: "
         + json.dumps({k: sorted(v) for k, v in ALLOWED.items()})
-        + ". Optional fields allowed by task kind: " + json.dumps({k: sorted(v) for k, v in OPTIONAL.items()}) + ". For a request to research and prepare a product or product launch, prefer ONE commerce.mission task instead of splitting it into disconnected small tasks. "
+        + ". Optional fields allowed by task kind: " + json.dumps({k: sorted(v) for k, v in OPTIONAL.items()}) + ". For ANY request to research product ideas, evaluate opportunities, create a digital product, or prepare a product launch, you MUST return exactly ONE commerce.mission task. NEVER return trends.collect, opportunity.assess, research.competitors, or opportunity.evaluate as separate tasks for that request; the integrated mission performs the research and analysis stages internally. Do not ask the user to choose a niche or audience when they delegated the decision. "
         + "For commerce.mission, provide all required product inputs and include optional fee assumptions only when the user supplied them. "
         + "A commerce.mission runs Aureon's complete local product workflow: live trends/news collection, supplied competitor URL review, saved supplier-quote comparison, unit economics, product record, editable artwork, listing and launch-copy drafts, plus AI research analysis. "
         + "Use conservative explicit assumptions only where the mission code defines defaults; never invent evidence, supplier quotes, market demand, prices, stock, sales, or credentials. "
