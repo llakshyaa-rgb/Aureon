@@ -170,8 +170,8 @@ def draft_plan(db_path, objective, context=None):
 
 def chat_command(db_path, message, history=None):
     """Conversational command interface: answer, ask a question, or queue an allowlisted local plan."""
-    if not isinstance(message, str) or not message.strip() or len(message) > 1600:
-        raise ValueError("message must be 1-1600 characters")
+    if not isinstance(message, str) or not message.strip() or len(message) > 12000:
+        raise ValueError("message must be 1-12000 characters")
     if history is None:
         history = []
     if not isinstance(history, list) or len(history) > 12:
@@ -244,7 +244,50 @@ def chat_command(db_path, message, history=None):
     if not tasks:
         return {"reply": reply or "I'm here. What would you like me to work on?",
                 "status": "answered", "provider": response.get("provider"), "model": response.get("model")}
-    plan = plan_run("Chat command · " + message.strip()[:90], tasks)
+
+    # Validate before queueing. If the model emits an almost-correct task schema,
+    # give it one explicit repair attempt instead of failing with a raw validator error.
+    plan_name = "Chat command · " + message.strip()[:90]
+    try:
+        plan = plan_run(plan_name, tasks)
+    except (ValueError, TypeError, KeyError) as validation_error:
+        repair_prompt = (
+            "Your previous JSON response could not be queued because its task plan failed validation.\\n"
+            "Validation error: " + str(validation_error) + "\\n"
+            "Original user request:\\n" + message.strip() + "\\n"
+            "Your previous JSON response:\\n" + json.dumps(data, ensure_ascii=False) + "\\n"
+            "Return a corrected JSON object with exactly reply, tasks, and needs_input. "
+            "Use only the task kinds and exact required/optional payload fields in the system instructions. "
+            "Do not add explanatory text or unsupported fields. For a product launch, use one commerce.mission task."
+        )
+        repaired = generate(db_path, system, repair_prompt, json_mode=True)
+        repaired_raw = repaired.get("content", "").strip()
+        if repaired_raw.startswith("```"):
+            repaired_raw = repaired_raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+        try:
+            repaired_data = json.loads(repaired_raw)
+        except (TypeError, json.JSONDecodeError):
+            start, end = repaired_raw.find("{"), repaired_raw.rfind("}")
+            try:
+                repaired_data = json.loads(repaired_raw[start:end + 1]) if start >= 0 and end > start else None
+            except json.JSONDecodeError:
+                repaired_data = None
+        if not isinstance(repaired_data, dict) or not isinstance(repaired_data.get("tasks", []), list):
+            raise RuntimeError("Aureon's AI produced an invalid task plan, even after one repair attempt. Check the selected model's JSON support.") from validation_error
+        if repaired_data.get("needs_input"):
+            return {"reply": str(repaired_data["needs_input"]), "status": "needs_input",
+                    "provider": repaired.get("provider"), "model": repaired.get("model")}
+        tasks = repaired_data.get("tasks", [])
+        if not tasks:
+            return {"reply": str(repaired_data.get("reply") or "I couldn't safely turn that into a task yet."),
+                    "status": "answered", "provider": repaired.get("provider"), "model": repaired.get("model")}
+        try:
+            plan = plan_run(plan_name, tasks)
+            response = repaired
+            reply = str(repaired_data.get("reply") or reply)
+        except (ValueError, TypeError, KeyError) as final_error:
+            raise RuntimeError("Aureon's AI returned an unsupported task plan twice. Last validation issue: " + str(final_error)) from final_error
+
     queued = submit_plan(db_path, plan["name"], plan["tasks"])
     return {"reply": reply or "I've prepared the requested local workflow.",
             "status": "queued", "run_id": queued["run_id"], "job_ids": queued.get("job_ids", []),
