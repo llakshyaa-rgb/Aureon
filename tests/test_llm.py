@@ -21,6 +21,16 @@ class LLMSettingsTests(unittest.TestCase):
         self.assertTrue({"openai", "anthropic", "gemini", "openrouter",
                          "groq", "deepseek", "mistral", "ollama", "lm_studio", "nvidia", "sambanova", "siliconflow", "custom"}.issubset(ids))
 
+    def test_apinex_provider_uses_official_openai_compatible_preset(self):
+        saved = save_settings(self.db, {
+            "provider": "apinex", "model": "free/deepseek-v4.1-flash",
+            "api_key": "apinex-secret", "temperature": 0.2, "max_tokens": 1024})
+        self.assertEqual(saved["provider"], "apinex")
+        self.assertEqual(saved["base_url"], "https://api.apinex.bond/v1")
+        self.assertEqual(saved["model"], "free/deepseek-v4.1-flash")
+        self.assertTrue(saved["api_key_set"])
+        self.assertNotIn("apinex-secret", json.dumps(saved))
+
     def test_key_is_never_returned_and_blank_preserves_existing(self):
         saved = save_settings(self.db, {
             "provider": "openrouter", "model": "provider/model-id",
