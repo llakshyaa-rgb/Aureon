@@ -96,6 +96,19 @@ class LLMSettingsTests(unittest.TestCase):
         self.assertIn("research the product opportunity", result["content"])
         self.assertEqual(request.call_count, 2)
 
+    def test_openrouter_retries_empty_response_then_uses_next_model(self):
+        save_settings(self.db, {"provider": "openrouter", "model": "",
+            "api_key": "openrouter-secret", "temperature": 0.2, "max_tokens": 512})
+        candidates = [{"id": "free/empty-route"}, {"id": "free/working-route"}]
+        empty = {"choices": [{"message": {"content": ""}}]}
+        good = {"choices": [{"message": {"content": "AUREON CONNECTION OK"}}]}
+        with patch("aureon.llm._select_openrouter_models", return_value=candidates), \
+             patch("aureon.llm._request_json", side_effect=[empty, empty, good]) as request:
+            result = generate(self.db, "system", "prompt")
+        self.assertEqual(result["content"], "AUREON CONNECTION OK")
+        self.assertEqual(result["model"], "free/working-route")
+        self.assertEqual(request.call_count, 3)
+
     def test_openai_compatible_generation_uses_configured_model(self):
         save_settings(self.db, {"provider": "deepseek", "model": "deepseek-chat",
             "api_key": "secret", "temperature": 0.2, "max_tokens": 512})
