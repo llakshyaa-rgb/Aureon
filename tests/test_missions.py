@@ -121,6 +121,26 @@ class MissionTests(unittest.TestCase):
         self.assertEqual(result["status"], "completed_with_warnings")
         self.assertTrue(any(step.get("resumed") for step in result["steps"]))
 
+    def test_run_mission_defaults_missing_shipping_cost_to_zero(self):
+        from contextlib import ExitStack
+        payload = dict(self.payload)
+        payload.pop("shipping_cost")
+        ai = {"status": "completed", "provider": "test", "model": "test", "assets": {
+            "listing_title": "Draft", "listing_description": "Draft", "tags": [],
+            "marketing_headline": "Launch", "marketing_copy": "Draft", "research_analysis": {}}}
+        with ExitStack() as stack:
+            stack.enter_context(patch("aureon.trends.collect_trends", return_value={"created": 0}))
+            stack.enter_context(patch("aureon.trends.collect_keyword_research", return_value={"created": 0, "fetched": 0, "errors": [], "sources": []}))
+            stack.enter_context(patch("aureon.public_pages.research_competitor_urls", return_value={"requested": 0, "observed": [], "errors": []}))
+            stack.enter_context(patch("aureon.suppliers.compare_supplier_quotes", return_value={"quotes": [], "best_quote": None}))
+            stack.enter_context(patch("aureon.creative.create_asset", return_value={"record": {"id": 901}, "artwork": {"qa": {"passed": True}}}))
+            stack.enter_context(patch("aureon.missions._ai_work", return_value=ai))
+            stack.enter_context(patch("aureon.intelligence.economics.calculate_unit_economics", return_value={"currency": "INR", "selling_price": 1499, "total_cost": 650, "fulfilment_cost": 650, "estimated_profit": 849, "profit_margin": 849 / 1499}))
+            result = run_mission(self.db, payload)
+        self.assertIn(result["status"], {"completed", "completed_with_warnings"})
+        product = next(row for row in list_records(self.db, "product", 250))
+        self.assertEqual(product["data"]["shipping_cost"], 0)
+
     def test_mission_accepts_optional_cost_assumptions(self):
         result = submit_mission(self.db, {**self.payload, "platform_fee_rate": 0.05,
             "payment_fee_rate": 0.02, "estimated_ad_cost": 80, "tax_rate": 0.03})
