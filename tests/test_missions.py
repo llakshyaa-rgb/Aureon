@@ -209,7 +209,9 @@ class MissionTests(unittest.TestCase):
         self.assertEqual(result["outputs"]["supplier_comparison"]["status"], "not_applicable")
         self.assertIsNotNone(result["outputs"]["listing"])
         self.assertIsNotNone(result["outputs"]["marketing_draft"])
-        self.assertEqual(result["ai_review"]["status"], "unavailable")
+        # Malformed model JSON now triggers deterministic local asset fallbacks.
+        self.assertEqual(result["ai_review"]["status"], "completed")
+        self.assertIn("analysis", result["ai_review"])
 
 
 if __name__ == "__main__":
