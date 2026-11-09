@@ -120,7 +120,7 @@ def _select_openrouter_models(key, system, prompt):
         models.sort(key=lambda item: (_model_size(item), -int(item.get("context_length") or 0)))
     else:
         models.sort(key=lambda item: (abs(_model_size(item) - 8), -int(item.get("context_length") or 0)))
-    return models[:8]
+    return models[:12]
 
 def save_settings(db_path, body):
     if not isinstance(body, dict):
