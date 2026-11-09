@@ -131,5 +131,45 @@ class AgentPlanTests(unittest.TestCase):
         self.assertEqual(normalized[0]["payload"]["product_title"], "Orbit Tee")
 
 
+    def test_broad_product_research_is_forced_into_one_integrated_mission(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = Path(directory) / "aureon.sqlite3"
+            initialize(db)
+            initialize_workspace(db)
+            message = "Research five digital product ideas in India, choose the best and create it."
+            broken_plan = {"content": json.dumps({
+                "reply": "I'll research these options.",
+                "tasks": [
+                    {"kind": "trends.collect", "payload": {"geo": "IN"}},
+                    {"kind": "opportunity.assess", "payload": {
+                        "title": "Planner", "evidence": ["https://example.com"], "signals": {}
+                    }},
+                    {"kind": "research.competitors", "payload": {"observations": ["https://example.com"]}},
+                    {"kind": "opportunity.evaluate", "payload": {
+                        "title": "Planner", "evidence": [], "signals": [], "observations": [], "offer": {}
+                    }},
+                ],
+                "needs_input": ""
+            }), "provider": "test", "model": "test-model"}
+            mission = {"content": json.dumps({"payload": {
+                "product_title": "Student Study Planner",
+                "concept": "A printable weekly study planner with revision and exam tracking pages",
+                "audience": "Indian students aged 15-22",
+                "product_type": "digital download",
+                "destination": "India",
+                "selling_price": 149,
+                "product_cost": 0,
+                "keywords": ["study planner", "student planner", "exam tracker"],
+                "style": "geometric",
+                "palette": "sunset"
+            }}), "provider": "test", "model": "test-model"}
+            with patch("aureon.llm.generate", side_effect=[broken_plan, mission]):
+                result = chat_command(db, message)
+            self.assertEqual(result["status"], "queued")
+            self.assertEqual([task["kind"] for task in result["tasks"]], ["commerce.mission"])
+            self.assertEqual(result["tasks"][0]["payload"]["currency"], "INR")
+            self.assertEqual(result["tasks"][0]["payload"]["shipping_cost"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
