@@ -296,3 +296,13 @@ def test_connection(db_path):
                       "Reply with exactly: AUREON CONNECTION OK", False)
     return {"ok": True, "provider": result["provider"], "model": result["model"],
             "response": result["content"][:300]}
+
+
+def clear_settings(db_path):
+    """Remove the saved provider, model and API key from this device."""
+    path = _settings_path(db_path)
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as exc:
+        raise RuntimeError("Could not remove saved model settings: " + str(exc)) from None
+    return {"cleared": True, **public_settings(db_path)}
