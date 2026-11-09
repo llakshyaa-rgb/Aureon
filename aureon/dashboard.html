@@ -320,6 +320,15 @@ button:disabled{opacity:.55}
 .aureon-activity[data-state="error"] .activity-state{color:#FF9292;background:rgba(232,99,99,.12)}
 @keyframes activity-bounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-5px);opacity:1}}
 @media(prefers-reduced-motion:reduce){.aureon-activity *{animation:none!important;transition:none!important}}
+
+/* Recent agent runs: warm readable text on navy activity cards. */
+.runtime-run,.runtime-stat{background:#183B5B!important;color:#F5EBDD!important}
+.runtime-run h3,.runtime-run p,.runtime-run small,.runtime-run li,.runtime-run strong,.runtime-stat span,.runtime-stat strong{color:#F5EBDD!important}
+.runtime-run .runtime-step{background:#DCCBB2!important;color:#18334E!important;border-color:rgba(24,51,78,.2)!important}
+.runtime-run .runtime-state{color:#18334E!important}
+.runtime-run .runtime-state.succeeded{background:#D5F0DF!important;color:#17613D!important}
+.runtime-run .runtime-state.failed{background:#F7DCDD!important;color:#8A2932!important}
+.runtime-run .runtime-state.running{background:#F4D99D!important;color:#62430E!important}
 </style></head><body><div class="app-shell"><aside class="sidebar">
 <div class="brand"><div class="brand-mark">A</div><div><strong>AUREON</strong><small>Commerce workspace</small></div></div>
 <div><div class="nav-label">Workspace</div><nav class="nav-list" aria-label="Main sections">
