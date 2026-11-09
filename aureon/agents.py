@@ -336,11 +336,11 @@ def chat_command(db_path, message, history=None):
                 "Only include competitor_urls if the user supplied actual URLs. Never invent evidence, URLs, sales or demand. "
                 "Do not ask questions about preferences the user delegated."
             )
-            mission_prompt = ("USER REQUEST:\\n" + message.strip() + "\\nRECENT CONTEXT:\\n" + json.dumps(clean_history, ensure_ascii=False)[:7000])
+            mission_prompt = ("USER REQUEST:\n" + message.strip() + "\nRECENT CONTEXT:\n" + json.dumps(clean_history, ensure_ascii=False)[:7000])
             mission_response = generate(db_path, mission_system, mission_prompt, json_mode=True)
             mission_raw = mission_response.get("content", "").strip()
             if mission_raw.startswith("```"):
-                mission_raw = mission_raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+                mission_raw = mission_raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
             try:
                 mission_data = json.loads(mission_raw)
             except (TypeError, json.JSONDecodeError):
