@@ -280,6 +280,9 @@ def chat_command(db_path, message, history=None):
         "Do not create tasks for publishing, spending, payment, placing supplier orders, customer messaging, "
         "deleting data, account changes, arbitrary code or shell execution. "
         "Only use dependencies on earlier task indexes. Never claim a task ran unless it is in the supplied results. "
+        "Always write the user-facing reply in English unless the user explicitly requests another language. Never switch languages based on the model, region, or inferred locale. "
+        "When the user says to choose, decide, use your judgment, or make the decisions yourself, do NOT ask them to choose a niche, audience, style, price range, or other non-essential preference. Make a sensible evidence-led choice, state any necessary assumptions, and proceed. "
+        "Ask a question only when a genuinely essential detail is missing and cannot safely be assumed. "
         "Keep the reply concise and friendly."
     )
     # The browser sends the just-submitted user message in history as well.
