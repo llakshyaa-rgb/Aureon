@@ -221,6 +221,7 @@ button[onclick*="load"],button[onclick*="History"],button[onclick*="Assets"],but
 .chat-messages{display:flex;flex-direction:column;gap:10px;min-height:170px;max-height:430px;overflow:auto;padding:15px 2px}
 .chat-bubble{max-width:min(88%,650px);padding:12px 14px;border-radius:14px;overflow-wrap:anywhere;font-size:13px;line-height:1.55}
 .chat-bubble p{margin:5px 0 0!important;color:inherit!important}
+.chat-bubble p{white-space:pre-wrap;overflow-wrap:anywhere}
 .chat-bubble.assistant{align-self:flex-start;background:#DCCBB2;color:#18334E;border-bottom-left-radius:4px}
 .chat-bubble.user{align-self:flex-end;background:#C66F52;color:#18334E;border-bottom-right-radius:4px}
 .chat-bubble .chat-meta{display:block;font-size:10px;opacity:.72;margin-top:7px}
@@ -354,7 +355,7 @@ button:disabled{opacity:.55}
     <div class="chat-top"><div><strong>Aureon</strong><small>Conversational command centre</small></div><div class="chat-actions"><details class="chat-history-menu"><summary>History</summary><div id="aureonChatHistoryList" class="chat-history-list">No saved chats yet.</div></details><button class="chat-clear" onclick="clearAureonChat()">New chat</button></div></div>
     <div id="aureonActivity" class="aureon-activity" data-state="idle" role="status" aria-live="polite"><span class="activity-orb" aria-hidden="true"><i></i><i></i><i></i></span><span class="activity-copy"><b id="aureonActivityTitle">Aureon is ready</b><small id="aureonActivityDetail">Send a message to start.</small></span><span class="activity-state" id="aureonActivityState">IDLE</span></div><div id="aureonChatMessages" class="chat-messages" aria-live="polite"><div class="chat-bubble assistant"><b>Aureon</b><p>Hey! Tell me in English what you want to achieve. For example: “Research a promising product for India, compare its costs, and prepare a product listing.”</p></div></div>
     <form id="aureonChatForm" class="chat-compose" onsubmit="sendAureonChat(event)"><textarea id="aureonChatInput" rows="2" maxlength="12000" placeholder="Tell Aureon what to do…" aria-label="Message Aureon"></textarea><button id="aureonChatSend" type="submit">Send <span>➤</span></button></form>
-    <div class="chat-hint">Enter to send · Shift + Enter for a new line · Actions stay local and approval-gated</div>
+    <div class="chat-hint">Enter adds a new line · Tap Send to submit · Actions stay local and approval-gated</div>
     <div id="aureonChatStatus" class="chat-status">Ready when you are.</div>
   </div>
   <div class="command-lower-grid">
@@ -558,7 +559,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const input=document.getElementById("aureonChatInput");
  if(input){
   input.addEventListener("input",()=>resizeAureonComposer(input));
-  input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendAureonChat(event)}});
+  // Textarea Enter inserts a newline; only the explicit Send button submits the form.
   resizeAureonComposer(input);
  }
  loadAureonChats();
