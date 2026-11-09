@@ -263,6 +263,7 @@ def _ai_work(db_path, payload, context):
 def run_mission(db_path, payload):
     # Backward-compatible defaults for queued missions created before optional cost fields existed.
     payload = {
+        "currency": "INR", "geo": "IN", "shipping_cost": 0,
         "platform_fee_rate": 0, "payment_fee_rate": 0, "payment_fixed_fee": 0,
         "estimated_ad_cost": 0, "packaging_cost": 0, "duty_cost": 0,
         "other_costs": 0, "tax_rate": 0, "return_rate": 0, "chargeback_rate": 0,
