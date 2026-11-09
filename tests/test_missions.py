@@ -178,5 +178,39 @@ class MissionTests(unittest.TestCase):
         self.assertFalse(result["external_actions_taken"])
 
 
+    def test_digital_product_skips_supplier_quotes_and_malformed_ai_uses_local_fallbacks(self):
+        from contextlib import ExitStack
+        payload = {**self.payload,
+            "product_title": "Founder Legal Template Pack",
+            "concept": "A practical editable pack of startup planning and admin templates",
+            "product_type": "Digital templates",
+            "product_cost": 0,
+            "shipping_cost": 0,
+        }
+        with ExitStack() as stack:
+            quotes = stack.enter_context(patch("aureon.suppliers.compare_supplier_quotes"))
+            stack.enter_context(patch("aureon.trends.collect_trends", return_value={"created": 0}))
+            stack.enter_context(patch("aureon.trends.collect_keyword_research",
+                                      return_value={"created": 0, "fetched": 0, "errors": [], "sources": []}))
+            stack.enter_context(patch("aureon.public_pages.research_competitor_urls",
+                                      return_value={"requested": 0, "observed": [], "errors": []}))
+            stack.enter_context(patch("aureon.creative.create_asset",
+                                      return_value={"record": {"id": 902}, "artwork": {"qa": {"passed": True}}}))
+            stack.enter_context(patch("aureon.llm.generate",
+                                      return_value={"content": "not valid json", "provider": "test", "model": "test"}))
+            stack.enter_context(patch("aureon.intelligence.economics.calculate_unit_economics",
+                                      return_value={"currency": "INR", "selling_price": 1499,
+                                                    "total_cost": 0, "fulfilment_cost": 0,
+                                                    "estimated_profit": 1499, "profit_margin": 1}))
+            result = run_mission(self.db, payload)
+        quotes.assert_not_called()
+        supplier_step = next(x for x in result["steps"] if x["name"] == "Supplier quote comparison")
+        self.assertEqual(supplier_step["status"], "not_applicable")
+        self.assertEqual(result["outputs"]["supplier_comparison"]["status"], "not_applicable")
+        self.assertIsNotNone(result["outputs"]["listing"])
+        self.assertIsNotNone(result["outputs"]["marketing_draft"])
+        self.assertEqual(result["ai_review"]["status"], "unavailable")
+
+
 if __name__ == "__main__":
     unittest.main()
