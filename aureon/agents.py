@@ -143,6 +143,7 @@ def draft_plan(db_path, objective, context=None):
         "tasks is an array of 1-12 objects with kind, payload, and optional depends_on indexes. "
         "Only choose these safe local task kinds and exact payload fields: " +
         json.dumps({k: sorted(v) for k, v in ALLOWED.items()}) +
+        ". Optional fields allowed by task kind: " + json.dumps({k: sorted(v) for k, v in OPTIONAL.items()}) +
         ". When the objective is to research and prepare a product launch, prefer one commerce.mission task over separate disconnected tasks. "
         "A commerce.mission task executes Aureon's complete local product workflow and must include every required payload field. "
         + "Never add shell, network publishing, ad spend, payments, supplier ordering, customer messaging, "
@@ -166,6 +167,63 @@ def draft_plan(db_path, objective, context=None):
             "provider": response.get("provider"), "model": response.get("model"),
             "requires_operator_review": True,
             "safety": "Only allowlisted local tasks are executable; external side effects remain approval-gated."}
+
+
+def _normalize_chat_tasks(tasks):
+    """Normalize common model schema aliases before strict allowlist validation."""
+    if not isinstance(tasks, list):
+        return tasks
+    kind_aliases = {
+        "commerce_mission": "commerce.mission",
+        "commerce-mission": "commerce.mission",
+        "product.launch": "commerce.mission",
+        "product_launch": "commerce.mission",
+    }
+    payload_aliases = {
+        "product_name": "product_title",
+        "name": "product_title",
+        "description": "concept",
+        "product_concept": "concept",
+        "product_category": "product_type",
+        "category": "product_type",
+        "market": "destination",
+        "price": "selling_price",
+        "cost": "product_cost",
+        "shipping": "shipping_cost",
+        "tags": "keywords",
+        "design_style": "style",
+        "color_palette": "palette",
+    }
+    normalized = []
+    for item in tasks:
+        if not isinstance(item, dict):
+            normalized.append(item)
+            continue
+        kind = item.get("kind") or item.get("type") or item.get("task")
+        kind = kind_aliases.get(kind, kind)
+        payload = item.get("payload")
+        if not isinstance(payload, dict):
+            for key in ("input", "arguments", "params"):
+                if isinstance(item.get(key), dict):
+                    payload = item[key]
+                    break
+        if isinstance(payload, dict) and kind == "commerce.mission":
+            payload = dict(payload)
+            for old, new in payload_aliases.items():
+                if old in payload and new not in payload:
+                    payload[new] = payload.pop(old)
+            if "currency" not in payload and str(payload.get("destination", "")).lower() in {"india", "in"}:
+                payload["currency"] = "INR"
+            if "geo" not in payload and str(payload.get("destination", "")).lower() in {"india", "in"}:
+                payload["geo"] = "IN"
+            payload.setdefault("style", "orbit")
+            payload.setdefault("palette", "midnight")
+        normalized.append({
+            "kind": kind,
+            "payload": payload,
+            **({"depends_on": item.get("depends_on", [])} if "depends_on" in item else {}),
+        })
+    return normalized
 
 
 def chat_command(db_path, message, history=None):
@@ -237,7 +295,7 @@ def chat_command(db_path, message, history=None):
         reply = ""
     if not isinstance(needs_input, str):
         needs_input = ""
-    tasks = data.get("tasks", [])
+    tasks = _normalize_chat_tasks(data.get("tasks", []))
     if needs_input.strip():
         return {"reply": needs_input.strip(), "status": "needs_input",
                 "provider": response.get("provider"), "model": response.get("model")}
@@ -279,7 +337,7 @@ def chat_command(db_path, message, history=None):
         if repaired_data.get("needs_input"):
             return {"reply": str(repaired_data["needs_input"]), "status": "needs_input",
                     "provider": repaired.get("provider"), "model": repaired.get("model")}
-        tasks = repaired_data.get("tasks", [])
+        tasks = _normalize_chat_tasks(repaired_data.get("tasks", []))
         if not tasks:
             return {"reply": str(repaired_data.get("reply") or "I couldn't safely turn that into a task yet."),
                     "status": "answered", "provider": repaired.get("provider"), "model": repaired.get("model")}
