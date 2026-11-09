@@ -21,7 +21,7 @@ from .marketing import create_campaign,request_campaign_approval,campaign_overvi
 from .finance import record_transaction,reconcile,cashflow_projection,financial_dashboard
 from .agents import submit_plan,runtime_status,draft_plan,chat_command
 from .missions import submit_mission
-from .llm import public_settings,save_settings,test_connection
+from .llm import public_settings,save_settings,test_connection,clear_settings
 from .command_center import dashboard_snapshot,interpret_command
 from .trends import fetch_trending_searches,trend_history
 from .public_pages import research_public_product_page
@@ -287,6 +287,7 @@ def make_handler(db_path):
     if path.startswith("/api/marketing/campaigns/") and path.endswith("/approval"):
      cid=int(path.split("/")[4]);return self._send(201,{"approval":request_campaign_approval(db_path,cid,b.get("action",""),b.get("amount"),b.get("reason","Human review required"))})
     if path=="/api/llm/settings": return self._send(200,save_settings(db_path,b))
+    if path=="/api/llm/settings/clear": return self._send(200,clear_settings(db_path))
     if path=="/api/llm/test": return self._send(200,test_connection(db_path))
     if path=="/api/missions": return self._send(202,submit_mission(db_path,b))
     if path=="/api/agents/chat": return self._send(200,chat_command(db_path,b.get("message",""),b.get("history",[])))
