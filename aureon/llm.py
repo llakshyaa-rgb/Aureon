@@ -63,7 +63,7 @@ def public_settings(db_path):
                       for key, value in PROVIDERS.items()],
         "provider": provider, "base_url": data.get("base_url", info["base_url"]),
         "model": data.get("model", ""), "api_key_set": bool(data.get("api_key")),
-        "api_key_hint": ("••••••••" + data["api_key"][-5:]) if data.get("api_key") else "",
+        
         "temperature": data.get("temperature", 0.2),
         "max_tokens": data.get("max_tokens", 1800),
     }
