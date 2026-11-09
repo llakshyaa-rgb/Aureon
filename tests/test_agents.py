@@ -107,6 +107,19 @@ class AgentPlanTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "incomplete answer"):
                     chat_command(db, message)
 
+    def test_chat_task_without_kind_infers_commerce_mission_from_product_fields(self):
+        task = {"payload": {"product_name": "Orbit Tee", "description": "Astronomy tee", "audience": "students", "product_category": "oversized t-shirt", "market": "India", "price": 699, "cost": 280, "keywords": ["space"], "style": "minimal", "palette": "navy"}}
+        normalized = _normalize_chat_tasks([task])
+        self.assertEqual(normalized[0]["kind"], "commerce.mission")
+        self.assertEqual(normalized[0]["payload"]["product_title"], "Orbit Tee")
+        self.assertEqual(normalized[0]["payload"]["selling_price"], 699)
+
+    def test_chat_task_root_fields_infer_commerce_mission(self):
+        task = {"product_title": "Orbit Tee", "concept": "Astronomy tee", "audience": "students", "product_type": "oversized t-shirt", "destination": "India", "selling_price": 699, "product_cost": 280, "keywords": ["space"], "style": "minimal", "palette": "navy"}
+        normalized = _normalize_chat_tasks([task])
+        self.assertEqual(normalized[0]["kind"], "commerce.mission")
+        self.assertEqual(normalized[0]["payload"]["product_title"], "Orbit Tee")
+
 
 if __name__ == "__main__":
     unittest.main()
