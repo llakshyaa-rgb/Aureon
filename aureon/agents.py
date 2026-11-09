@@ -192,7 +192,7 @@ def chat_command(db_path, message, history=None):
         "For a clear request to do work, create a short dependency-aware task plan using ONLY "
         "these allowlisted local task kinds and exact payload fields: "
         + json.dumps({k: sorted(v) for k, v in ALLOWED.items()})
-        + ". For a request to research and prepare a product or product launch, prefer ONE commerce.mission task instead of splitting it into disconnected small tasks. "
+        + ". Optional fields allowed by task kind: " + json.dumps({k: sorted(v) for k, v in OPTIONAL.items()}) + ". For a request to research and prepare a product or product launch, prefer ONE commerce.mission task instead of splitting it into disconnected small tasks. "
         + "For commerce.mission, provide all required product inputs and include optional fee assumptions only when the user supplied them. "
         + "A commerce.mission runs Aureon's complete local product workflow: live trends/news collection, supplied competitor URL review, saved supplier-quote comparison, unit economics, product record, editable artwork, listing and launch-copy drafts, plus AI research analysis. "
         + "Use conservative explicit assumptions only where the mission code defines defaults; never invent evidence, supplier quotes, market demand, prices, stock, sales, or credentials. "
@@ -252,10 +252,12 @@ def chat_command(db_path, message, history=None):
         plan = plan_run(plan_name, tasks)
     except (ValueError, TypeError, KeyError) as validation_error:
         repair_prompt = (
-            "Your previous JSON response could not be queued because its task plan failed validation.\\n"
-            "Validation error: " + str(validation_error) + "\\n"
-            "Original user request:\\n" + message.strip() + "\\n"
-            "Your previous JSON response:\\n" + json.dumps(data, ensure_ascii=False) + "\\n"
+            "Your previous JSON response could not be queued because its task plan failed validation.\n"
+            "Validation error: " + str(validation_error) + "\n"
+            "Allowed task kinds and required fields: " + json.dumps({k: sorted(v) for k, v in ALLOWED.items()}) + "\n"
+            "Allowed optional fields: " + json.dumps({k: sorted(v) for k, v in OPTIONAL.items()}) + "\n"
+            "Original user request:\n" + message.strip() + "\n"
+            "Your previous JSON response:\n" + json.dumps(data, ensure_ascii=False) + "\n"
             "Return a corrected JSON object with exactly reply, tasks, and needs_input. "
             "Use only the task kinds and exact required/optional payload fields in the system instructions. "
             "Do not add explanatory text or unsupported fields. For a product launch, use one commerce.mission task."
@@ -263,7 +265,7 @@ def chat_command(db_path, message, history=None):
         repaired = generate(db_path, system, repair_prompt, json_mode=True)
         repaired_raw = repaired.get("content", "").strip()
         if repaired_raw.startswith("```"):
-            repaired_raw = repaired_raw.split("\\n", 1)[-1].rsplit("```", 1)[0].strip()
+            repaired_raw = repaired_raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         try:
             repaired_data = json.loads(repaired_raw)
         except (TypeError, json.JSONDecodeError):
